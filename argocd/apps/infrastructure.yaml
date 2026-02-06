@@ -4,6 +4,7 @@
 # - NFS Provisioner (StorageClass)
 # - Sealed Secrets (gestion des secrets)
 # - Ingress NGINX (controller d'ingress)
+# - ArgoCD Ingress (acces via argocd.kubesecurebox.com)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -73,3 +74,26 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure-argocd-ingress
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
+    targetRevision: main
+    path: infrastructure/argocd-ingress
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

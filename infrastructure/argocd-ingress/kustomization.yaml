@@ -1,0 +1,10 @@
+# ArgoCD Ingress Configuration
+# =============================
+# Expose ArgoCD via argocd.kubesecurebox.com (Tailscale only)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  - ingress.yaml

@@ -1,0 +1,34 @@
+# ArgoCD Ingress
+# ==============
+# Accessible via argocd.kubesecurebox.com (Tailscale only - DNS pointe vers IP Tailscale)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Backend utilise HTTPS (ArgoCD server ecoute en HTTPS)
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # Timeout plus long pour les operations ArgoCD
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: argocd.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 443
+  tls:
+    - hosts:
+        - argocd.kubesecurebox.com
+      # Utilise le certificat auto-genere par Ingress NGINX
+      # Plus tard, on pourra ajouter cert-manager pour Let's Encrypt
