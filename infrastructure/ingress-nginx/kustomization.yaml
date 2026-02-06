@@ -1,33 +1,26 @@
 # Ingress NGINX Installation via Kustomize
 # =========================================
-# Utilise le manifest officiel Ingress NGINX pour bare-metal/cloud
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: ingress-nginx
-
 resources:
-  - namespace.yaml
   # Manifest officiel Ingress NGINX pour deploiements bare-metal
-  - https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.5/deploy/static/provider/baremetal/deploy.yaml
+  # Syntaxe GitHub pour Kustomize
+  - github.com/kubernetes/ingress-nginx/deploy/static/provider/baremetal?ref=controller-v1.9.5
 
-# Patch pour exposer le controller sur les ports 80/443 du node (NodePort)
+# Patch pour configurer les NodePorts
 patches:
   - patch: |-
       - op: replace
         path: /spec/type
         value: NodePort
-      - op: add
+      - op: replace
         path: /spec/ports/0/nodePort
         value: 30080
-      - op: add
+      - op: replace
         path: /spec/ports/1/nodePort
         value: 30443
     target:
       kind: Service
       name: ingress-nginx-controller
       namespace: ingress-nginx
-
-commonLabels:
-  app.kubernetes.io/part-of: kubesecurebox
-  app.kubernetes.io/component: ingress
