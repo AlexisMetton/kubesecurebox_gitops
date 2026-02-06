@@ -1,0 +1,29 @@
+# ArgoCD Root Application (App of Apps)
+# =====================================
+# Cette application deploie toutes les autres applications
+# C'est le point d'entree principal de GitOps
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # Repo GitHub public KubeSecureBox GitOps
+    repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
+    targetRevision: main
+    path: argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      # Supprime les ressources qui ne sont plus dans Git
+      prune: true
+      # Corrige automatiquement les derives (modifications manuelles)
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

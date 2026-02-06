@@ -1,0 +1,28 @@
+# ArgoCD Application - Applications utilisateur
+# =============================================
+# Deploie les applications depuis le dossier apps/
+# Pour l'instant vide, sera utilise pour vos futures applications
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: applications
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
+    targetRevision: main
+    path: apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

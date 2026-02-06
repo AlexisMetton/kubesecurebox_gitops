@@ -1,0 +1,45 @@
+# NFS Provisioner Deployment
+# ==========================
+# Provisionne automatiquement des volumes sur le HDD du Pi Master
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-client-provisioner
+  namespace: nfs-provisioner
+  labels:
+    app: nfs-client-provisioner
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+          # Image multi-arch (fonctionne sur ARM64 Raspberry Pi)
+          image: registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+            # === CONFIGURATION ADAPTEE A VOTRE INFRASTRUCTURE ===
+            - name: PROVISIONER_NAME
+              value: k8s-sigs.io/nfs-subdir-external-provisioner
+            - name: NFS_SERVER
+              # IP Tailscale du Pi Master (depuis votre config Ansible)
+              value: "100.66.46.6"
+            - name: NFS_PATH
+              # Chemin NFS configure dans le role storage Ansible
+              value: "/mnt/storage/nfs-shares/k8s"
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: "100.66.46.6"
+            path: "/mnt/storage/nfs-shares/k8s"

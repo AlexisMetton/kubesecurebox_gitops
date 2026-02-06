@@ -1,0 +1,51 @@
+# ArgoCD Application - Infrastructure
+# ====================================
+# Deploie tous les composants d'infrastructure :
+# - NFS Provisioner (StorageClass)
+# - Sealed Secrets (gestion des secrets)
+# - Ingress NGINX (plus tard)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure-nfs-provisioner
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
+    targetRevision: main
+    path: infrastructure/nfs-provisioner
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nfs-provisioner
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure-sealed-secrets
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
+    targetRevision: main
+    path: infrastructure/sealed-secrets
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

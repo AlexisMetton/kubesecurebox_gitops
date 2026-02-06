@@ -1,0 +1,16 @@
+# NFS Provisioner Kustomization
+# =============================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nfs-provisioner
+
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - deployment.yaml
+  - storageclass.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: kubesecurebox
+  app.kubernetes.io/component: storage

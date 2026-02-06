@@ -1,0 +1,51 @@
+# KubeSecureBox GitOps - .gitignore
+# ==================================
+
+# IMPORTANT: Ne JAMAIS commiter de secrets en clair !
+# Utiliser kubeseal pour chiffrer les secrets
+
+# Secrets Kubernetes en clair (DANGER !)
+**/secret.yaml
+**/secrets.yaml
+**/*-secret.yaml
+**/*-secrets.yaml
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Fichiers systeme
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Kubeconfig (ne jamais commiter !)
+kubeconfig*
+*.kubeconfig
+
+# Fichiers de backup Sealed Secrets (contiennent la cle privee !)
+sealed-secrets-backup*.yaml
+*-sealed-secrets-key*.yaml
+
+# Fichiers de certificat prives
+*.key
+*.pem
+!sealed-secrets-cert.pem  # Le certificat public peut etre commite
+
+# Terraform (si utilise plus tard)
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Helm (fichiers temporaires)
+charts/*/charts/
+charts/**/tmpcharts/
+
+/MEMO.md

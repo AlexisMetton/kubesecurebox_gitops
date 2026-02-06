@@ -1,0 +1,9 @@
+# NFS Provisioner Namespace
+# =========================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nfs-provisioner
+  labels:
+    app.kubernetes.io/name: nfs-provisioner
+    app.kubernetes.io/part-of: kubesecurebox

@@ -1,0 +1,30 @@
+# NFS StorageClass
+# ================
+# StorageClass par defaut pour le cluster KubeSecureBox
+# Utilise le HDD 4To du Pi Master via NFS
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-client
+  annotations:
+    # Definir comme StorageClass par defaut (remplace local-path de K3s)
+    storageclass.kubernetes.io/is-default-class: "true"
+  labels:
+    app.kubernetes.io/name: nfs-client
+    app.kubernetes.io/part-of: kubesecurebox
+provisioner: k8s-sigs.io/nfs-subdir-external-provisioner
+parameters:
+  # Quand un PVC est supprime, les donnees sont archivees dans archived-*
+  # au lieu d'etre supprimees immediatement (securite)
+  archiveOnDelete: "true"
+  # Cree un sous-dossier par PVC avec le format: namespace-pvcname-pvname
+  pathPattern: "${.PVC.namespace}-${.PVC.name}"
+# Permet l'expansion des volumes (augmenter la taille)
+allowVolumeExpansion: true
+# Politique de recuperation : Delete = archive les donnees (grace a archiveOnDelete)
+reclaimPolicy: Delete
+# Mode de montage pour les volumes
+mountOptions:
+  - nfsvers=4.1
+  - hard
+  - noatime
