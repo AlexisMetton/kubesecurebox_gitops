@@ -184,7 +184,7 @@ spec:
   source:
     repoURL: https://grafana.github.io/helm-charts
     chart: loki-stack
-    targetRevision: "1.6.0"
+    targetRevision: "0.73.0"
     helm:
       releaseName: loki-stack
       values: |
