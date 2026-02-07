@@ -1,0 +1,12 @@
+# cert-manager Installation
+# =========================
+# Gestion des certificats SSL (Let's Encrypt)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Manifest officiel cert-manager (CRDs + controller)
+  - https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+  - cluster-issuer.yaml
+  # Apres avoir cree le SealedSecret (voir CLOUDFLARE-SECRET.md), decommentez :
+  - cloudflare-api-token-sealed.yaml

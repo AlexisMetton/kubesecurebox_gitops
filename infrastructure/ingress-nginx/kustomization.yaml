@@ -1,26 +1,45 @@
 # Ingress NGINX Installation via Kustomize
 # =========================================
+# Expose sur les ports 80 et 443 des nodes (HostPort)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   # Manifest officiel Ingress NGINX pour deploiements bare-metal
-  # Syntaxe GitHub pour Kustomize
   - github.com/kubernetes/ingress-nginx/deploy/static/provider/baremetal?ref=controller-v1.9.5
 
-# Patch pour configurer les NodePorts
+# Patch 1 : Service en ClusterIP (le trafic passe par HostPort sur les pods)
 patches:
   - patch: |-
       - op: replace
         path: /spec/type
-        value: NodePort
-      - op: replace
-        path: /spec/ports/0/nodePort
-        value: 30080
-      - op: replace
-        path: /spec/ports/1/nodePort
-        value: 30443
+        value: ClusterIP
     target:
       kind: Service
+      name: ingress-nginx-controller
+      namespace: ingress-nginx
+
+  # Patch 2 : Deployment - HostPort 80 et 443 sur les nodes
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/ports/0/hostPort
+        value: 80
+      - op: add
+        path: /spec/template/spec/containers/0/ports/1/hostPort
+        value: 443
+    target:
+      kind: Deployment
+      name: ingress-nginx-controller
+      namespace: ingress-nginx
+
+  # Patch 3 : Forcer le pod sur le nœud Master (control plane)
+  # K3s pose le label node-role.kubernetes.io/control-plane sur le serveur
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector
+        value:
+          node-role.kubernetes.io/control-plane: ""
+    target:
+      kind: Deployment
       name: ingress-nginx-controller
       namespace: ingress-nginx

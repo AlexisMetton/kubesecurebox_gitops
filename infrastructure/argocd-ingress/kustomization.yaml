@@ -1,10 +1,12 @@
 # ArgoCD Ingress Configuration
 # =============================
 # Expose ArgoCD via argocd.kubesecurebox.com (Tailscale only)
+# Certificat Let's Encrypt via cert-manager
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: argocd
 
 resources:
+  - certificate.yaml
   - ingress.yaml

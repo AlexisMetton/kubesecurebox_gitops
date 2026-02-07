@@ -30,5 +30,5 @@ spec:
   tls:
     - hosts:
         - argocd.kubesecurebox.com
-      # Utilise le certificat auto-genere par Ingress NGINX
-      # Plus tard, on pourra ajouter cert-manager pour Let's Encrypt
+      # Secret cree par cert-manager (Certificate argocd-kubesecurebox-tls)
+      secretName: argocd-kubesecurebox-tls

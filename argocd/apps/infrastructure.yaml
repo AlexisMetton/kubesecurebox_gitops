@@ -4,6 +4,7 @@
 # - NFS Provisioner (StorageClass)
 # - Sealed Secrets (gestion des secrets)
 # - Ingress NGINX (controller d'ingress)
+# - cert-manager (certificats Let's Encrypt)
 # - ArgoCD Ingress (acces via argocd.kubesecurebox.com)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -67,6 +68,30 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure-cert-manager
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
+    targetRevision: main
+    path: infrastructure/cert-manager
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true

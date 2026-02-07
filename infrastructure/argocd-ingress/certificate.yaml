@@ -1,0 +1,15 @@
+# Certificate Let's Encrypt pour argocd.kubesecurebox.com
+# ========================================================
+# cert-manager cree automatiquement le Secret avec le certificat
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-kubesecurebox-tls
+  namespace: argocd
+spec:
+  secretName: argocd-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - argocd.kubesecurebox.com
