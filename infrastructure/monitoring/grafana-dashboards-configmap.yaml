@@ -1,7 +1,7 @@
 # Grafana - Provisioning des dashboards (tout en code)
 # =====================================================
-# Les JSON complets (Node Exporter 1860, K8s 6417, Loki 12019) peuvent être
-# ajoutés comme clés supplémentaires depuis https://grafana.com/grafana/dashboards/
+# Overview + Loki + K8s Compute + Node Summary. Pour Node Exporter Full (1860)
+# : Dashboard → Import → id 1860 (optionnel, très détaillé).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -34,24 +34,72 @@ data:
           "id": 1,
           "type": "stat",
           "title": "Prometheus",
-          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "graphMode": "none", "colorMode": "value" },
-          "targets": [
-            { "expr": "up{job=\"prometheus\"}", "refId": "A" }
-          ]
+          "targets": [{ "expr": "up{job=\"prometheus\"}", "refId": "A" }]
         },
         {
           "id": 2,
           "type": "stat",
           "title": "Nodes",
-          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "graphMode": "none", "colorMode": "value" },
-          "targets": [
-            { "expr": "count(kube_node_info)", "refId": "A" }
-          ]
+          "targets": [{ "expr": "count(kube_node_info)", "refId": "A" }]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Pods total",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "targets": [{ "expr": "count(kube_pod_info)", "refId": "A" }]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Pods non prêts",
+          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "targets": [{ "expr": "count(kube_pod_status_phase{phase!=\"Running\",phase!=\"Succeeded\"})", "refId": "A" }]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Mémoire dispo %",
+          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } },
+          "targets": [{ "expr": "sum(node_memory_MemAvailable_bytes)/sum(node_memory_MemTotal_bytes)", "refId": "A" }]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "CPU usage %",
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } },
+          "targets": [{ "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))", "refId": "A" }]
+        },
+        {
+          "id": 7,
+          "type": "text",
+          "title": "Logs (Loki)",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
+          "options": { "content": "**Logs**\n\n[Ouvrir Explore Loki](/explore?orgId=1&left={\"datasource\":\"loki\"})", "mode": "markdown" },
+          "links": [{ "title": "Explore Loki", "url": "/explore?orgId=1&left={\"datasource\":\"loki\"}" }]
         }
       ],
       "refresh": "30s"
     }
+  loki-logs.json: |
+    {"annotations":{"list":[]},"editable":true,"gnetId":12019,"graphTooltip":0,"id":null,"links":[],"panels":[{"datasource":{"type":"loki","uid":"loki"},"gridPos":{"h":25,"w":24,"x":0,"y":0},"id":2,"options":{"showLabels":false,"showTime":true,"sortOrder":"Descending","wrapLogMessage":true},"targets":[{"expr":"{namespace=~\"$namespace\"} |~ \"$search\"","refId":"A"}],"title":"Logs Panel","type":"logs"}],"schemaVersion":38,"tags":["loki","logs"],"templating":{"list":[{"current":{},"datasource":{"type":"prometheus","uid":"prometheus"},"definition":"label_values(kube_pod_info, namespace)","hide":0,"includeAll":false,"name":"namespace","options":[],"query":"label_values(kube_pod_info, namespace)","refresh":1,"sort":0,"type":"query"},{"current":{},"hide":0,"name":"search","options":[{"selected":true,"text":"","value":""}],"query":"","type":"textbox"}]},"time":{"from":"now-6h","to":"now"},"title":"Loki - Logs","uid":"loki-logs-kubesecurebox","version":1}
+  k8s-compute.json: |
+    {"id":null,"uid":"k8s-compute-kubesecurebox","title":"Kubernetes Compute","tags":["kubernetes","kubesecurebox"],"schemaVersion":38,"version":1,"refresh":"30s","templating":{"list":[{"name":"node","type":"custom","query":".*","current":{"value":".*","text":"All"},"hide":0},{"name":"namespace","type":"custom","query":".*","current":{"value":".*","text":"All"},"hide":0}]},"panels":[{"id":1,"type":"stat","title":"Cluster Pod Usage","gridPos":{"h":4,"w":6,"x":0,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1}},"targets":[{"expr":"sum(kube_pod_info) / sum(kube_node_status_allocatable_pods)","refId":"A"}]},{"id":2,"type":"stat","title":"Cluster CPU Usage (requests)","gridPos":{"h":4,"w":6,"x":6,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1}},"targets":[{"expr":"sum(kube_pod_container_resource_requests_cpu_cores) / sum(kube_node_status_allocatable_cpu_cores)","refId":"A"}]},{"id":3,"type":"stat","title":"Cluster Memory Usage (requests)","gridPos":{"h":4,"w":6,"x":12,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1}},"targets":[{"expr":"sum(kube_pod_container_resource_requests_memory_bytes) / sum(kube_node_status_allocatable_memory_bytes)","refId":"A"}]},{"id":4,"type":"stat","title":"Pods Running","gridPos":{"h":4,"w":6,"x":18,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"targets":[{"expr":"sum(kube_pod_status_phase{phase=\"Running\"})","refId":"A"}]}]}
+  node-summary.json: |
+    {"id":null,"uid":"node-summary-kubesecurebox","title":"Node Summary","tags":["node-exporter","kubesecurebox"],"schemaVersion":38,"version":1,"refresh":"30s","panels":[{"id":1,"type":"stat","title":"CPU usage % (cluster)","gridPos":{"h":4,"w":6,"x":0,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1}},"targets":[{"expr":"1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))","refId":"A"}]},{"id":2,"type":"stat","title":"Mémoire dispo % (cluster)","gridPos":{"h":4,"w":6,"x":6,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1}},"targets":[{"expr":"sum(node_memory_MemAvailable_bytes)/sum(node_memory_MemTotal_bytes)","refId":"A"}]},{"id":3,"type":"stat","title":"Nodes (node_exporter)","gridPos":{"h":4,"w":6,"x":12,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"targets":[{"expr":"count(count by (instance)(node_cpu_seconds_total))","refId":"A"}]},{"id":4,"type":"stat","title":"Disque utilisé % (cluster)","gridPos":{"h":4,"w":6,"x":18,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"options":{"graphMode":"none","colorMode":"value"},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1}},"targets":[{"expr":"1 - sum(node_filesystem_avail_bytes{fstype=~\"ext4|xfs\"})/sum(node_filesystem_size_bytes{fstype=~\"ext4|xfs\"})","refId":"A"}]}]}
