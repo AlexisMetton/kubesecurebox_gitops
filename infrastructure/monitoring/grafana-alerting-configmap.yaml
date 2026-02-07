@@ -1,0 +1,76 @@
+# Grafana - Provisioning alerting (contact point Discord + règles)
+# =================================================================
+# Le webhook Discord est injecté via la variable d'env DISCORD_WEBHOOK_URL
+# (Secret grafana-discord-webhook, à créer et sceller avec kubeseal).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  contactpoints.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: Discord
+        receivers:
+          - uid: discord-kubesecurebox
+            type: discord
+            disableResolveMessage: false
+            settings:
+              url: $DISCORD_WEBHOOK_URL
+  rules.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: kubesecurebox-infra
+        folder: KubeSecureBox Alerts
+        interval: 1m
+        rules:
+          - uid: instance-down
+            title: Instance / target down
+            condition: A
+            data:
+              - refId: A
+                datasourceUid: prometheus
+                model:
+                  expr: up == 0
+                  refId: A
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 1m
+            annotations:
+              summary: "Target {{ $labels.job }} / {{ $labels.instance }} is down"
+            labels:
+              severity: critical
+          - uid: node-not-ready
+            title: Node NotReady
+            condition: B
+            data:
+              - refId: B
+                datasourceUid: prometheus
+                model:
+                  expr: kube_node_status_condition{condition="Ready",status="false"} == 1
+                  refId: B
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 2m
+            annotations:
+              summary: "Node {{ $labels.node }} is NotReady"
+            labels:
+              severity: warning
+  policytree.yaml: |
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: discord-kubesecurebox
+        group_by: ["alertname"]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h

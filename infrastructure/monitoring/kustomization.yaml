@@ -11,7 +11,10 @@ resources:
   - prometheus-deployment.yaml
   - kube-state-metrics.yaml
   - grafana-configmap-datasource.yaml
+  - grafana-dashboards-configmap.yaml
+  - grafana-alerting-configmap.yaml
   - grafana-admin-sealed.yaml
+  - grafana-discord-webhook-sealed.yaml
   - grafana-deployment.yaml
 
 commonLabels:

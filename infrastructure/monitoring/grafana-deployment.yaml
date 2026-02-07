@@ -39,11 +39,21 @@ spec:
               value: ""
             - name: GF_PATHS_PROVISIONING
               value: /etc/grafana/provisioning
+          envFrom:
+            - secretRef:
+                name: grafana-discord-webhook
+                optional: true
           volumeMounts:
             - name: storage
               mountPath: /var/lib/grafana
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+            - name: dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            - name: alerting
+              mountPath: /etc/grafana/provisioning/alerting
               readOnly: true
           resources:
             requests:
@@ -71,6 +81,12 @@ spec:
         - name: datasources
           configMap:
             name: grafana-datasources
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+        - name: alerting
+          configMap:
+            name: grafana-alerting
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

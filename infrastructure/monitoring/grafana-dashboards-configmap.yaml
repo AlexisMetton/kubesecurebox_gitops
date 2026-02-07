@@ -1,0 +1,57 @@
+# Grafana - Provisioning des dashboards (tout en code)
+# =====================================================
+# Les JSON complets (Node Exporter 1860, K8s 6417, Loki 12019) peuvent être
+# ajoutés comme clés supplémentaires depuis https://grafana.com/grafana/dashboards/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: KubeSecureBox
+        type: file
+        disableDeletion: false
+        editable: false
+        options:
+          path: /etc/grafana/provisioning/dashboards
+  overview.json: |
+    {
+      "id": null,
+      "uid": "kubesecurebox-overview",
+      "title": "KubeSecureBox Overview",
+      "tags": ["kubesecurebox"],
+      "schemaVersion": 38,
+      "version": 1,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Prometheus",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "targets": [
+            { "expr": "up{job=\"prometheus\"}", "refId": "A" }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Nodes",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "targets": [
+            { "expr": "count(kube_node_info)", "refId": "A" }
+          ]
+        }
+      ],
+      "refresh": "30s"
+    }
