@@ -8,7 +8,7 @@
 # - ArgoCD Ingress (acces via argocd.kubesecurebox.com)
 # - Monitoring (Prometheus, kube-state-metrics, Grafana)
 # - Grafana Ingress (acces via grafana.kubesecurebox.com)
-# - Loki + Promtail (Helm chart grafana/loki-stack)
+# - Loki + Promtail (Helm charts grafana/loki et grafana/promtail, loki-stack déprécié)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -172,6 +172,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
+# Loki (chart "loki" 6.x - loki-stack est déprécié et retiré du repo)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -183,21 +184,48 @@ spec:
   project: default
   source:
     repoURL: https://grafana.github.io/helm-charts
-    chart: loki-stack
-    targetRevision: "0.73.0"
+    chart: loki
+    targetRevision: "6.52.0"
     helm:
-      releaseName: loki-stack
+      releaseName: loki
       values: |
-        loki:
+        deploymentMode: SingleBinary
+        singleBinary:
+          replicas: 1
           persistence:
-            enabled: true
             size: 10Gi
-          config:
-            auth_enabled: false
-        promtail:
-          enabled: true
-        grafana:
-          enabled: false
+        loki:
+          auth_enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# Promtail (envoie les logs vers Loki)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure-promtail
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: promtail
+    targetRevision: "6.17.1"
+    helm:
+      releaseName: promtail
+      values: |
+        config:
+          clients:
+            - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
