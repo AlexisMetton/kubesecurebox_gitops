@@ -33,12 +33,12 @@ patches:
       namespace: ingress-nginx
 
   # Patch 3 : Forcer le pod sur le nœud Master (control plane)
-  # K3s pose le label node-role.kubernetes.io/control-plane sur le serveur
+  # K3s pose le label node-role.kubernetes.io/control-plane=true sur le serveur
   - patch: |-
       - op: add
         path: /spec/template/spec/nodeSelector
         value:
-          node-role.kubernetes.io/control-plane: ""
+          node-role.kubernetes.io/control-plane: "true"
     target:
       kind: Deployment
       name: ingress-nginx-controller
