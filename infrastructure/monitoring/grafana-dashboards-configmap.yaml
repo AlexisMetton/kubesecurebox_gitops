@@ -60,11 +60,12 @@ data:
         {
           "id": 4,
           "type": "stat",
-          "title": "Pods non prêts",
+          "title": "Pods Not Ready (readiness)",
+          "description": "Pods en Running mais pas prêts (readiness probe)",
           "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": { "graphMode": "none", "colorMode": "value" },
-          "targets": [{ "expr": "count(kube_pod_status_phase{phase!=\"Running\",phase!=\"Succeeded\"})", "refId": "A" }]
+          "targets": [{ "expr": "count(kube_pod_status_ready == 0)", "refId": "A" }]
         },
         {
           "id": 5,
@@ -88,9 +89,20 @@ data:
         },
         {
           "id": 7,
+          "type": "stat",
+          "title": "Disque utilisé %",
+          "description": "Espace disque utilisé (cluster, ext4/xfs, node_exporter)",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "options": { "graphMode": "none", "colorMode": "value" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } },
+          "targets": [{ "expr": "1 - sum(node_filesystem_avail_bytes{fstype=~\"ext4|xfs\"})/sum(node_filesystem_size_bytes{fstype=~\"ext4|xfs\"})", "refId": "A" }]
+        },
+        {
+          "id": 8,
           "type": "text",
           "title": "Logs (Loki)",
-          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 4 },
           "options": { "content": "**Logs**\n\n[Ouvrir Explore Loki](/explore?orgId=1&left={\"datasource\":\"loki\"})", "mode": "markdown" },
           "links": [{ "title": "Explore Loki", "url": "/explore?orgId=1&left={\"datasource\":\"loki\"}" }]
         }
