@@ -35,6 +35,9 @@ data:
             data:
               - refId: A
                 datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
                 model:
                   expr: up == 0
                   refId: A
@@ -53,6 +56,9 @@ data:
             data:
               - refId: B
                 datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
                 model:
                   expr: kube_node_status_condition{condition="Ready",status="false"} == 1
                   refId: B
