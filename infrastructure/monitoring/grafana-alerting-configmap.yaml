@@ -71,11 +71,11 @@ data:
               summary: "Node {{ $labels.node }} is NotReady"
             labels:
               severity: warning
-  policytree.yaml: |
+  03-policytree.yaml: |
     apiVersion: 1
     policies:
       - orgId: 1
-        receiver: discord-kubesecurebox
+        receiver: Discord
         group_by: ["alertname"]
         group_wait: 30s
         group_interval: 5m
