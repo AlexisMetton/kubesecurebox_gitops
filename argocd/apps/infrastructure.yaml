@@ -194,6 +194,8 @@ spec:
           replicas: 1
           persistence:
             size: 10Gi
+        simpleScalable:
+          replicas: 0
         loki:
           auth_enabled: false
           storage:
