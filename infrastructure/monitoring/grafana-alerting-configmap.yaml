@@ -71,6 +71,132 @@ data:
               summary: "Node {{ $labels.node }} is NotReady"
             labels:
               severity: warning
+          - uid: pods-not-ready
+            title: Pods Not Ready (readiness)
+            condition: C
+            data:
+              - refId: C
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  expr: count(kube_pod_status_ready == 0) > 0
+                  refId: C
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 2m
+            annotations:
+              summary: "{{ $values.C.Value }} pod(s) en Running mais pas prêts (readiness)"
+            labels:
+              severity: warning
+          - uid: memory-low-cluster
+            title: Mémoire dispo faible (cluster)
+            condition: D
+            data:
+              - refId: D
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  expr: sum(node_memory_MemAvailable_bytes)/sum(node_memory_MemTotal_bytes) < 0.1
+                  refId: D
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: "Moins de 10% de RAM disponible sur le cluster"
+            labels:
+              severity: warning
+          - uid: cpu-high-cluster
+            title: CPU usage élevé (cluster)
+            condition: E
+            data:
+              - refId: E
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  expr: 1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.9
+                  refId: E
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: "CPU cluster > 90% sur 5m"
+            labels:
+              severity: warning
+          - uid: disk-high-cluster
+            title: Disque utilisé élevé (cluster)
+            condition: F
+            data:
+              - refId: F
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  expr: 1 - sum(node_filesystem_avail_bytes{fstype=~"ext4|xfs"})/sum(node_filesystem_size_bytes{fstype=~"ext4|xfs"}) > 0.9
+                  refId: F
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: "Disque cluster > 90% utilisé (ext4/xfs)"
+            labels:
+              severity: warning
+          - uid: temperature-high
+            title: Température élevée (Raspberry / nœud)
+            condition: G
+            data:
+              - refId: G
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  expr: (node_hwmon_temp_celsius > 75) or (node_thermal_zone_temp > 75)
+                  refId: G
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 3m
+            annotations:
+              summary: "Température > 75°C sur {{ $labels.instance }}"
+            labels:
+              severity: warning
+          - uid: load-high
+            title: Load 1m élevé (nœud)
+            condition: H
+            data:
+              - refId: H
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  expr: node_load1 > 8
+                  refId: H
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: "Load 1m > 8 sur {{ $labels.instance }}"
+            labels:
+              severity: warning
   03-policytree.yaml: |
     apiVersion: 1
     policies:
