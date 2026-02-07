@@ -196,6 +196,11 @@ spec:
             size: 10Gi
         loki:
           auth_enabled: false
+          storage:
+            bucketNames:
+              chunks: chunks
+              ruler: ruler
+              admin: admin
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
