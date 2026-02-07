@@ -1,0 +1,27 @@
+# Grafana Ingress
+# ===============
+# Accessible via https://grafana.kubesecurebox.com (Tailscale)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+  tls:
+    - hosts:
+        - grafana.kubesecurebox.com
+      secretName: grafana-kubesecurebox-tls

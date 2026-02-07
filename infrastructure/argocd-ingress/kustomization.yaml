@@ -10,3 +10,4 @@ namespace: argocd
 resources:
   - certificate.yaml
   - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
