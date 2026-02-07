@@ -189,7 +189,7 @@ spec:
     helm:
       releaseName: loki
       values: |
-        deploymentMode: SingleBinary
+        deploymentMode: SingleBinary<->SimpleScalable
         singleBinary:
           replicas: 1
           persistence:
