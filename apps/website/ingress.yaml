@@ -1,13 +1,15 @@
 # Ingress website - HTTPS via cert-manager
 # =========================================
 # Site public : https://kubesecurebox.com et https://www.kubesecurebox.com
+# Trafic via Cloudflare Tunnel : le tunnel envoie du HTTP à l'ingress.
+# ssl-redirect: false évite la boucle de redirection (ingress ne force pas HTTPS vers le client).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: website-ingress
   namespace: website
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
   rules:
