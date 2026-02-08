@@ -21,11 +21,24 @@ spec:
     spec:
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:latest
+          # Image avec shell (cloudflared officiel est distroless, pas de /bin/sh)
+          image: alpine:3.19
           command:
             - /bin/sh
             - -c
-            - "tunnel --no-autoupdate run --token $TUNNEL_TOKEN"
+            - |
+              set -e
+              apk add --no-cache wget
+              ARCH=$(uname -m)
+              case $ARCH in
+                aarch64)  F=cloudflared-linux-arm64 ;;
+                x86_64)   F=cloudflared-linux-amd64 ;;
+                armv7l)   F=cloudflared-linux-arm ;;
+                *)        F=cloudflared-linux-amd64 ;;
+              esac
+              wget -q -O /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/$F"
+              chmod +x /usr/local/bin/cloudflared
+              exec cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"
           env:
             - name: TUNNEL_TOKEN
               valueFrom:
