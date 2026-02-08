@@ -30,7 +30,7 @@ data:
         interval: 1m
         rules:
           - uid: instance-down
-            title: Instance / target down
+            title: Pi / nœud éteint ou injoignable
             condition: A
             data:
               - refId: A
@@ -43,11 +43,11 @@ data:
                   refId: A
                   intervalMs: 1000
                   maxDataPoints: 43200
-            noDataState: Alerting
+            noDataState: OK
             execErrState: Alerting
             for: 1m
             annotations:
-              summary: "Target {{ $labels.job }} / {{ $labels.instance }} is down"
+              summary: "Pi/nœud injoignable : {{ $labels.instance }} (job {{ $labels.job }}) — cible down (éteint ou réseau)"
             labels:
               severity: critical
           - uid: node-not-ready
