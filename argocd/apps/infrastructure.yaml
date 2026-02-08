@@ -250,6 +250,12 @@ spec:
         config:
           clients:
             - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+        # Sur Raspberry Pi, Promtail met plus de temps à répondre à /ready
+        readinessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 6
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
