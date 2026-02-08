@@ -1,5 +1,6 @@
 # Namespace n8n (app métier)
 # ===========================
+# sync-wave: 0 pour que le namespace soit créé avant les autres ressources du dossier.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -7,3 +8,5 @@ metadata:
   labels:
     app.kubernetes.io/name: n8n
     app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
