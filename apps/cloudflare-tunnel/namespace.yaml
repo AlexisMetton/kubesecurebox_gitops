@@ -1,0 +1,12 @@
+# Namespace cloudflare-tunnel (connecteur Cloudflare Tunnel)
+# ==========================================================
+# sync-wave: 0 pour que le namespace soit créé avant les autres ressources.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudflare-tunnel
+  labels:
+    app.kubernetes.io/name: cloudflare-tunnel
+    app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"

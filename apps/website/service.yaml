@@ -1,0 +1,15 @@
+# Service website
+# ===============
+apiVersion: v1
+kind: Service
+metadata:
+  name: website
+  namespace: website
+spec:
+  selector:
+    app: website
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  type: ClusterIP

@@ -1,0 +1,23 @@
+# cloudflare-tunnel - Connecteur Cloudflare Tunnel
+# =================================================
+# Tunnel sortant vers Cloudflare pour kubesecurebox.com et www.kubesecurebox.com.
+# Le trafic arrive au tunnel puis est envoyé vers ingress-nginx (ClusterIP).
+#
+# À faire une fois : créer le Secret avec le token Cloudflare (Zero Trust > Tunnels > kubesecurebox > token) :
+#   kubectl create secret generic cloudflare-tunnel-token \
+#     --from-literal=token='COLLE_ICI_TON_TOKEN' \
+#     -n cloudflare-tunnel
+#
+# Ne pas committer le token dans Git.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cloudflare-tunnel
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+
+commonLabels:
+  app.kubernetes.io/name: cloudflare-tunnel
+  app.kubernetes.io/part-of: kubesecurebox

@@ -1,0 +1,15 @@
+# Certificate Let's Encrypt pour kubesecurebox.com et www.kubesecurebox.com
+# ===========================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: website-kubesecurebox-tls
+  namespace: website
+spec:
+  secretName: website-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - kubesecurebox.com
+    - www.kubesecurebox.com

@@ -1,0 +1,38 @@
+# Ingress website - HTTPS via cert-manager
+# =========================================
+# Site public : https://kubesecurebox.com et https://www.kubesecurebox.com
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: website-ingress
+  namespace: website
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: website
+                port:
+                  number: 80
+    - host: www.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: website
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - kubesecurebox.com
+        - www.kubesecurebox.com
+      secretName: website-kubesecurebox-tls

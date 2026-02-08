@@ -1,0 +1,41 @@
+# Deployment cloudflared - connecteur Cloudflare Tunnel
+# =====================================================
+# Établit le tunnel vers Cloudflare pour kubesecurebox.com et www.
+# Le token est fourni via le Secret cloudflare-tunnel-token (créé manuellement).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflare-tunnel
+  labels:
+    app: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          command:
+            - /bin/sh
+            - -c
+            - "tunnel --no-autoupdate run --token $TUNNEL_TOKEN"
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-token
+                  key: token
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "200m"
