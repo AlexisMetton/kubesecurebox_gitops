@@ -1,0 +1,9 @@
+# Namespace n8n (app métier)
+# ===========================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: n8n
+  labels:
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/part-of: kubesecurebox

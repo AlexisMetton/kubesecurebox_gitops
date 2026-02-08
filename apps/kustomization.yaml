@@ -1,0 +1,8 @@
+# Applications métier - racine Kustomize
+# ======================================
+# Inclut toutes les apps (n8n, etc.). Chaque sous-dossier a son propre namespace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - n8n

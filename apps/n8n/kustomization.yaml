@@ -1,0 +1,22 @@
+# n8n - App métier (automation workflows)
+# =======================================
+# Accessible uniquement sur Tailscale : https://n8n.kubesecurebox.com
+# Pour restreindre au réseau Tailscale : pointer n8n.kubesecurebox.com vers l'IP Tailscale (100.x.x.x) dans Cloudflare / DNS.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: n8n
+
+resources:
+  - namespace.yaml
+  - n8n-encryption-key-sealed.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: n8n
+  app.kubernetes.io/part-of: kubesecurebox

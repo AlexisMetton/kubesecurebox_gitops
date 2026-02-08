@@ -1,0 +1,15 @@
+# PVC pour les données n8n (workflows, credentials, SQLite)
+# ==========================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-data
+  namespace: n8n
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  # Utilise la StorageClass par défaut (NFS provisioner si configuré)
+  # storageClassName: nfs

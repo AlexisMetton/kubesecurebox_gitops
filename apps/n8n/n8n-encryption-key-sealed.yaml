@@ -1,0 +1,29 @@
+# Sealed Secret : clé de chiffrement n8n (N8N_ENCRYPTION_KEY)
+# ===========================================================
+# À créer AVANT le premier déploiement. Remplace tout ce fichier par la sortie de la commande ci-dessous.
+#
+# 1. Contexte kubectl pointant vers ton cluster (ex. KUBECONFIG ou kubectl config use-context).
+# 2. Générer une clé et sceller le secret :
+#
+#    KEY=$(openssl rand -hex 32)
+#    kubectl create secret generic n8n-encryption-key \
+#      --from-literal=encryption-key="$KEY" \
+#      --namespace=n8n \
+#      --dry-run=client -o yaml | kubeseal -o yaml
+#
+# 3. Copier la sortie complète ici (à la place du YAML ci-dessous), sauvegarder, puis push.
+#
+# Sans cette étape, le pod n8n restera en CreateContainerConfigError (Secret manquant).
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: n8n-encryption-key
+  namespace: n8n
+spec:
+  encryptedData:
+    encryption-key: AgCsylUswvcilqYI7OMCpkvVxPE/FdLiQveX/izVACUly+lUHNJHFHAKanLr5804L/LMZxDF0Jifq7wMkkkFhC6YJubE6EgNh0rw30U35QwRG2BfjXK+E6Se+0rcy4IltRx2I9XAcgsiolIYh0cDrshfLyyLO8QQ3RpbnMxrur3xoK1Msyc9vUU8wUWQ4WI3MNUE/hykwUMmD/gxMZo/rjH6jmML4kiFZGmjHeis2xPD7mBVSk+id6W4gJfUya03Z3ePmN/rsfEks8JQHwBh+WMKeN+Eti6/hsWs0dSlgMedWeOsS2C/IVmJlghbX+64+p9ARRUS8AFusuaWgavkfMAfayiM6uTpL4zvqMmpWdYfhuHxEsHUGs3muF6p4CFLZge5YNvTa+5YVyCaDFJTW70ZIGHISCBPK8D2YnG4Ll6jQaDM7G9W28/HM3KsVH97nSBk8KPFgr8wxAtfQU7i4dVatTesSffBFGClWKnuaQ3ub5DTanKx8miC4yae/fKCimP6pUgtF7qnXleXUzmO+jGOSGN0Ir4/n5Vp/3qqUR9Y96Q2zbF1Swzw2wvaGiMATI7RN03QqS8qwAokaFw6Jvte3DTlpDQRtwmClgG/7VrP2FP+GD99ICuqdIDUdfG/CANlDeJokaWl1i5lKjtkRAZUbhZbkmhJZcoYknWmDwDJeayCo7kS1VvIUIIzMaXDvHakJV8A+/8AQ5ljEsvac4lixKTSN9bzobGXQZ7zxmgbBKOC5hLydlweClkFkJ46VYFwVxYuK3JoliTbkCaVcCAS
+  template:
+    metadata:
+      name: n8n-encryption-key
+      namespace: n8n
