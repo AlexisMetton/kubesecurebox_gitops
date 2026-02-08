@@ -26,7 +26,7 @@ spec:
               name: http
           env:
             - name: N8N_HOST
-              value: "0.0.0.0"
+              value: "n8n.kubesecurebox.com"
             - name: N8N_PORT
               value: "5678"
             - name: N8N_PROTOCOL
@@ -37,6 +37,10 @@ spec:
               value: "https://n8n.kubesecurebox.com/"
             - name: N8N_PROXY_HOPS
               value: "1"
+            - name: N8N_SECURE_COOKIE
+              value: "true"
+            - name: N8N_ALLOWED_ORIGINS
+              value: "https://n8n.kubesecurebox.com"
             - name: N8N_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
