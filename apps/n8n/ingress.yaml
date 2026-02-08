@@ -1,6 +1,6 @@
 # Ingress n8n - HTTPS via cert-manager
 # =====================================
-# Accessible uniquement sur le réseau Tailscale (DNS n8n.kubesecurebox.com → IP Tailscale).
+# Accessible uniquement sur le réseau Tailscale (DNS automation.kubesecurebox.com → IP Tailscale).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,11 +9,11 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    nginx.ingress.kubernetes.io/upstream-vhost: "n8n.kubesecurebox.com"
+    nginx.ingress.kubernetes.io/upstream-vhost: "automation.kubesecurebox.com"
 spec:
   ingressClassName: nginx
   rules:
-    - host: n8n.kubesecurebox.com
+    - host: automation.kubesecurebox.com
       http:
         paths:
           - path: /
@@ -25,5 +25,5 @@ spec:
                   number: 5678
   tls:
     - hosts:
-        - n8n.kubesecurebox.com
+        - automation.kubesecurebox.com
       secretName: n8n-kubesecurebox-tls

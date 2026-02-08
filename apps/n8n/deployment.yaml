@@ -1,6 +1,6 @@
 # Deployment n8n
 # ==============
-# App métier : automation de workflows. Accessible uniquement via Tailscale (n8n.kubesecurebox.com).
+# App métier : automation de workflows. Accessible uniquement via Tailscale (automation.kubesecurebox.com).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,21 +26,21 @@ spec:
               name: http
           env:
             - name: N8N_HOST
-              value: "n8n.kubesecurebox.com"
+              value: "automation.kubesecurebox.com"
             - name: N8N_PORT
               value: "5678"
             - name: N8N_PROTOCOL
               value: "https"
             - name: N8N_EDITOR_BASE_URL
-              value: "https://n8n.kubesecurebox.com"
+              value: "https://automation.kubesecurebox.com"
             - name: WEBHOOK_URL
-              value: "https://n8n.kubesecurebox.com/"
+              value: "https://automation.kubesecurebox.com/"
             - name: N8N_PROXY_HOPS
               value: "1"
             - name: N8N_SECURE_COOKIE
               value: "true"
             - name: N8N_ALLOWED_ORIGINS
-              value: "https://n8n.kubesecurebox.com"
+              value: "https://automation.kubesecurebox.com"
             - name: N8N_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
