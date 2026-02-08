@@ -15,6 +15,7 @@ spec:
     repoURL: https://github.com/AlexisMetton/kubesecurebox_gitops.git
     targetRevision: main
     path: apps
+    kustomize: {}
   destination:
     server: https://kubernetes.default.svc
     namespace: default
