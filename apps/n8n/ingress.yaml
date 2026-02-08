@@ -9,6 +9,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/upstream-vhost: "n8n.kubesecurebox.com"
 spec:
   ingressClassName: nginx
   rules:
