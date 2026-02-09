@@ -1,0 +1,15 @@
+# Certificate Let's Encrypt pour alexismetton.com et www.alexismetton.com
+# =========================================================================
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: portfolio-alexismetton-tls
+  namespace: portfolio
+spec:
+  secretName: portfolio-alexismetton-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - alexismetton.com
+    - www.alexismetton.com

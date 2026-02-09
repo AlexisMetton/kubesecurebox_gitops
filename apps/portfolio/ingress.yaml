@@ -1,0 +1,40 @@
+# Ingress portfolio - HTTPS via cert-manager
+# ===========================================
+# Site public : https://alexismetton.com et https://www.alexismetton.com
+# Trafic via Cloudflare Tunnel : le tunnel envoie du HTTP à l'ingress.
+# ssl-redirect: false évite la boucle de redirection (ingress ne force pas HTTPS vers le client).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portfolio-ingress
+  namespace: portfolio
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: alexismetton.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portfolio
+                port:
+                  number: 80
+    - host: www.alexismetton.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portfolio
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - alexismetton.com
+        - www.alexismetton.com
+      secretName: portfolio-alexismetton-tls

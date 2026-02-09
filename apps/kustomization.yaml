@@ -7,4 +7,5 @@ kind: Kustomization
 resources:
   - n8n
   - website
+  - portfolio
   - cloudflare-tunnel

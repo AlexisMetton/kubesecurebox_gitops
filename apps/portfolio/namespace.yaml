@@ -1,0 +1,12 @@
+# Namespace portfolio (site statique alexismetton.com)
+# ===================================================
+# sync-wave: 0 pour que le namespace soit créé avant les autres ressources.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portfolio
+  labels:
+    app.kubernetes.io/name: portfolio
+    app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"

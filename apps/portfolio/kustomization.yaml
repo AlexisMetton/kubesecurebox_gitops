@@ -1,0 +1,20 @@
+# portfolio - Site statique alexismetton.com
+# ==========================================
+# Public : https://alexismetton.com et https://www.alexismetton.com
+# Image : ametton/portfolio-alexismetton (Docker Hub, build depuis le repo Portfolio_Alexis_Metton).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: portfolio
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: portfolio
+  app.kubernetes.io/part-of: kubesecurebox
