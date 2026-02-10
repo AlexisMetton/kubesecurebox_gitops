@@ -1,0 +1,15 @@
+# Service MySQL
+# =============
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: matomo
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+      name: mysql
+  type: ClusterIP

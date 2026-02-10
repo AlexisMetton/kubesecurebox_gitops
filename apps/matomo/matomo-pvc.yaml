@@ -1,0 +1,13 @@
+# PVC pour les données Matomo (config, uploads, logs)
+# ===================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: matomo-data
+  namespace: matomo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

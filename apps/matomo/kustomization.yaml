@@ -1,0 +1,24 @@
+# matomo - Analytics (Matomo)
+# ===========================
+# Accessible sur https://matomo.kubesecurebox.com
+# Track les sites : alexismetton.com et kubesecurebox.com
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: matomo
+
+resources:
+  - namespace.yaml
+  - mysql-secret-sealed.yaml
+  - mysql-statefulset.yaml
+  - mysql-service.yaml
+  - matomo-pvc.yaml
+  - matomo-deployment.yaml
+  - matomo-service.yaml
+  - matomo-certificate.yaml
+  - matomo-ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: matomo
+  app.kubernetes.io/part-of: kubesecurebox

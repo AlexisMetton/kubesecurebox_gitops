@@ -1,0 +1,62 @@
+# Deployment Matomo
+# =================
+# Analytics pour alexismetton.com et kubesecurebox.com
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matomo
+  namespace: matomo
+  labels:
+    app: matomo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: matomo
+  template:
+    metadata:
+      labels:
+        app: matomo
+    spec:
+      containers:
+        - name: matomo
+          image: matomo:latest
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: MATOMO_DATABASE_HOST
+              value: mysql
+            - name: MATOMO_DATABASE_ADAPTER
+              value: mysql
+            - name: MATOMO_DATABASE_TABLES_PREFIX
+              value: matomo_
+            - name: MATOMO_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: mysql-user
+            - name: MATOMO_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: mysql-password
+            - name: MATOMO_DATABASE_DBNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: mysql-database
+          volumeMounts:
+            - name: matomo-data
+              mountPath: /var/www/html
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: matomo-data
+          persistentVolumeClaim:
+            claimName: matomo-data

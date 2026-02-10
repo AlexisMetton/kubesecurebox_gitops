@@ -1,0 +1,29 @@
+# Ingress Matomo - HTTPS via cert-manager
+# =======================================
+# Accessible sur https://matomo.kubesecurebox.com
+# Trafic via Cloudflare Tunnel : le tunnel envoie du HTTP à l'ingress.
+# ssl-redirect: false évite la boucle de redirection (ingress ne force pas HTTPS vers le client).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: matomo-ingress
+  namespace: matomo
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: matomo.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: matomo
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - matomo.kubesecurebox.com
+      secretName: matomo-kubesecurebox-tls
