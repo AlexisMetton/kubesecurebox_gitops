@@ -10,6 +10,10 @@ metadata:
   namespace: matomo
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Rate limiting pour protéger contre le brute force (valeurs strictes)
+    nginx.ingress.kubernetes.io/limit-rpm: "30"
+    nginx.ingress.kubernetes.io/limit-rps: "5"
+    nginx.ingress.kubernetes.io/limit-connections: "5"
 spec:
   ingressClassName: nginx
   rules:
