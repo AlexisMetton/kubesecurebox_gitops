@@ -21,3 +21,4 @@ spec:
           dnsZones:
             - kubesecurebox.com
             - alexismetton.com
+            - theeuropeancitizen.eu
