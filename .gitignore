@@ -51,3 +51,6 @@ charts/**/tmpcharts/
 /MEMO.md
 /SECRET.md
 
+# Application european-citizen (exclue du repo)
+apps/european-citizen/
+
