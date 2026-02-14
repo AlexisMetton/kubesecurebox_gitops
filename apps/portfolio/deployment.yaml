@@ -24,7 +24,7 @@ spec:
           image: ametton/portfolio-alexismetton:sha-b1c3f15
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 80
               name: http
           resources:
             requests:

@@ -24,7 +24,7 @@ spec:
           image: ametton/kubesecurebox-site:sha-20b5d0f
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 80
               name: http
           resources:
             requests:
