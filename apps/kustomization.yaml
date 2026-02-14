@@ -11,3 +11,4 @@ resources:
   - cloudflare-tunnel
   - matomo
   - european-citizen
+  - phpmyadmin
