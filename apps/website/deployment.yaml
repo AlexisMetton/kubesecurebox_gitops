@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: website
-          image: ametton/kubesecurebox-site:sha-12d6144
+          image: ametton/kubesecurebox-site:sha-e3d18ef
           imagePullPolicy: Always
           ports:
             - containerPort: 80
