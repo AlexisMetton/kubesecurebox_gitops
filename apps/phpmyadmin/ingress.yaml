@@ -1,0 +1,31 @@
+# Ingress phpMyAdmin - HTTPS via cert-manager (même schéma qu'Adminer)
+# =====================================================================
+# Accessible sur Tailscale : https://phpmyadmin.kubesecurebox.com
+# sync-wave: 1 pour que l'Ingress soit créé après le Certificate (le secret peut apparaître en async)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: phpmyadmin-ingress
+  namespace: phpmyadmin
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "128m"
+    nginx.ingress.kubernetes.io/upstream-vhost: "phpmyadmin.kubesecurebox.com"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: phpmyadmin.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: phpmyadmin
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - phpmyadmin.kubesecurebox.com
+      secretName: phpmyadmin-kubesecurebox-tls

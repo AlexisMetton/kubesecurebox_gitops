@@ -1,0 +1,11 @@
+# Namespace phpMyAdmin - administration BDD (MySQL, Matomo, etc.)
+# ==============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: phpmyadmin
+  labels:
+    app.kubernetes.io/name: phpmyadmin
+    app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"

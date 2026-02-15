@@ -1,0 +1,25 @@
+# Config phpMyAdmin - serveurs MySQL (Matomo, etc.)
+# PmaAbsoluteUri + TrustedProxies requis derrière Ingress pour éviter 403 et redirections cassées.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phpmyadmin-config
+  namespace: phpmyadmin
+data:
+  config.user.inc.php: |
+    <?php
+    $cfg['PmaAbsoluteUri'] = 'https://phpmyadmin.kubesecurebox.com/';
+    $cfg['TrustedProxies'] = array(
+      '10.0.0.0/8' => array('X-Forwarded-For' => 'ALL'),
+      '100.64.0.0/10' => array('X-Forwarded-For' => 'ALL'),
+      '172.16.0.0/12' => array('X-Forwarded-For' => 'ALL'),
+    );
+    $i = 0;
+    $i++;
+    $cfg['Servers'][$i]['host'] = 'mysql.matomo.svc.cluster.local';
+    $cfg['Servers'][$i]['port'] = '3306';
+    $cfg['Servers'][$i]['verbose'] = 'Matomo';
+    $cfg['Servers'][$i]['compress'] = false;
+    $cfg['Servers'][$i]['AllowNoPassword'] = false;
+    $cfg['ServerDefault'] = 1;
+    $cfg['blowfish_secret'] = 'kubesecurebox-phpmyadmin-cookie-secret-change-in-production';

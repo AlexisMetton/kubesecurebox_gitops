@@ -1,0 +1,25 @@
+# phpMyAdmin - Administration MySQL (Matomo, etc.)
+# ================================================
+# Accessible sur Tailscale : https://phpmyadmin.kubesecurebox.com
+# Identifiants : utiliser les secrets mysql-credentials de chaque app (matomo, etc.).
+# Si 403 : vérifier kubectl get certificate -n phpmyadmin (Ready), puis redémarrer le contrôleur Ingress :
+#   kubectl rollout restart deployment/ingress-nginx-controller -n ingress-nginx
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: phpmyadmin
+
+resources:
+  - namespace.yaml
+  - configmap-phpmyadmin.yaml
+  - configmap-apache.yaml
+  - configmap-apache-vhost.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: phpmyadmin
+  app.kubernetes.io/part-of: kubesecurebox

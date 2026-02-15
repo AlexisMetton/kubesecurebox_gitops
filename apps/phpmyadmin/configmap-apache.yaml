@@ -1,0 +1,17 @@
+# Config Apache : ServerName, mod_remoteip, Require all granted
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phpmyadmin-apache-config
+  namespace: phpmyadmin
+data:
+  "99-allow.conf": |
+    ServerName phpmyadmin.kubesecurebox.com
+    RemoteIPTrustedProxy 10.0.0.0/8
+    RemoteIPTrustedProxy 172.16.0.0/12
+    RemoteIPTrustedProxy 100.64.0.0/10
+    <Directory /var/www/html>
+        Require all granted
+        Options Indexes FollowSymLinks
+        AllowOverride All
+    </Directory>

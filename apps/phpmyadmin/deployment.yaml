@@ -1,0 +1,75 @@
+# Deployment phpMyAdmin - administration MySQL (Matomo, etc.)
+# ===========================================================
+# Accessible sur Tailscale : https://phpmyadmin.kubesecurebox.com
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: phpmyadmin
+  labels:
+    app: phpmyadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+        - name: phpmyadmin
+          image: phpmyadmin:5.2-apache
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: UPLOAD_LIMIT
+              value: "128M"
+            - name: APACHE_SERVERNAME
+              value: "phpmyadmin.kubesecurebox.com"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phpmyadmin/config.user.inc.php
+              subPath: config.user.inc.php
+              readOnly: true
+            - name: apache-config
+              mountPath: /etc/apache2/conf-enabled/99-allow.conf
+              subPath: "99-allow.conf"
+              readOnly: true
+            - name: apache-vhost
+              mountPath: /etc/apache2/sites-enabled/000-default.conf
+              subPath: "000-default.conf"
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: phpmyadmin-config
+        - name: apache-config
+          configMap:
+            name: phpmyadmin-apache-config
+        - name: apache-vhost
+          configMap:
+            name: phpmyadmin-apache-vhost

@@ -1,0 +1,20 @@
+# Vhost par défaut : Require all granted
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phpmyadmin-apache-vhost
+  namespace: phpmyadmin
+data:
+  "000-default.conf": |
+    <VirtualHost *:80>
+        ServerName phpmyadmin.kubesecurebox.com
+        DocumentRoot /var/www/html
+        <Directory /var/www/html>
+            Options Indexes FollowSymLinks
+            AllowOverride All
+            Require all granted
+            DirectoryIndex index.php
+        </Directory>
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+    </VirtualHost>
