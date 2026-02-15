@@ -1,0 +1,18 @@
+# ClusterRoleBinding : Portainer a besoin de droits étendus pour gérer le cluster (pods, logs, exec, etc.)
+# ======================================================================================================
+# Réservé à un accès Tailscale uniquement (portainer.kubesecurebox.com → IP Tailscale).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: portainer
+  labels:
+    app.kubernetes.io/name: portainer
+    app.kubernetes.io/part-of: kubesecurebox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: portainer-sa-clusteradmin
+    namespace: portainer

@@ -1,0 +1,16 @@
+# PVC Portainer - données de l'interface (préférences, etc.)
+# ===========================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: portainer
+  namespace: portainer
+  labels:
+    app.kubernetes.io/name: portainer
+    app.kubernetes.io/part-of: kubesecurebox
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

@@ -1,0 +1,26 @@
+# Portainer CE - Interface web de gestion du cluster (pods, logs, exec, etc.)
+# ===========================================================================
+# Accessible sur Tailscale : https://portainer.kubesecurebox.com
+# Première visite : créer un compte admin (username + mot de passe).
+# Portainer a les droits cluster-admin : à réserver à un accès Tailscale uniquement.
+# Si 403 : vérifier kubectl get certificate -n portainer (Ready), puis redémarrer le contrôleur Ingress :
+#   kubectl rollout restart deployment/ingress-nginx-controller -n ingress-nginx
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: portainer
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - clusterrolebinding.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: portainer
+  app.kubernetes.io/part-of: kubesecurebox

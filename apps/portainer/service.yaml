@@ -1,0 +1,25 @@
+# Service Portainer - port 9000 (HTTP) pour l'Ingress (TLS terminé par Ingress)
+# ==============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer
+  namespace: portainer
+  labels:
+    app.kubernetes.io/name: portainer
+    app.kubernetes.io/part-of: kubesecurebox
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: portainer
+  ports:
+    - port: 9000
+      targetPort: 9000
+      name: http
+  # Ports 9443 et 30776 conservés si besoin en interne (Edge, tunnel)
+  # - port: 9443
+  #   targetPort: 9443
+  #   name: https
+  # - port: 30776
+  #   targetPort: 8000
+  #   name: edge

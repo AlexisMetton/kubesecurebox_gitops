@@ -1,0 +1,26 @@
+# RBAC : Ingress NGINX doit pouvoir lire et surveiller le Secret TLS dans le namespace portainer
+# ==============================================================================================
+# watch permet au contrôleur de recharger le cert quand le secret apparaît (cert-manager émet en async)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ingress-nginx-tls-reader
+  namespace: portainer
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ingress-nginx-tls-reader
+  namespace: portainer
+subjects:
+  - kind: ServiceAccount
+    name: ingress-nginx
+    namespace: ingress-nginx
+roleRef:
+  kind: Role
+  name: ingress-nginx-tls-reader
+  apiGroup: rbac.authorization.k8s.io

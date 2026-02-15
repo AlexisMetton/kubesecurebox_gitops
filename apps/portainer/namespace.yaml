@@ -1,0 +1,11 @@
+# Namespace Portainer - interface web de gestion du cluster
+# ==========================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portainer
+  labels:
+    app.kubernetes.io/name: portainer
+    app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"

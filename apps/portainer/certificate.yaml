@@ -1,0 +1,17 @@
+# Certificate Let's Encrypt pour portainer.kubesecurebox.com
+# ===========================================================
+# sync-wave: -1 pour que le Certificate soit créé avant l'Ingress (cert-manager émet le secret en async)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: portainer-kubesecurebox-tls
+  namespace: portainer
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: portainer-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - portainer.kubesecurebox.com
