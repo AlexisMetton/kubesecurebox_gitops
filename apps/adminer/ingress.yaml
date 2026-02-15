@@ -1,5 +1,5 @@
-# Ingress Adminer - HTTPS via cert-manager
-# ========================================
+# Ingress Adminer - HTTPS via cert-manager (aligné sur n8n/automation)
+# =====================================================================
 # Accessible sur Tailscale : https://adminer.kubesecurebox.com
 # Pointer adminer.kubesecurebox.com vers l'IP Tailscale dans le DNS pour restreindre l'accès.
 apiVersion: networking.k8s.io/v1
@@ -11,9 +11,6 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/upstream-vhost: "adminer.kubesecurebox.com"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
 spec:
   ingressClassName: nginx
   rules:
@@ -26,7 +23,7 @@ spec:
               service:
                 name: adminer
                 port:
-                  number: 80
+                  number: 8080
   tls:
     - hosts:
         - adminer.kubesecurebox.com
