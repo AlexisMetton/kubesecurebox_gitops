@@ -1,0 +1,15 @@
+# Service Adminer
+# ==============
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminer
+  namespace: adminer
+spec:
+  selector:
+    app: adminer
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+  type: ClusterIP

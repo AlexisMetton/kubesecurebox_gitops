@@ -1,0 +1,25 @@
+# RBAC : Ingress NGINX doit pouvoir lire le Secret TLS dans le namespace adminer
+# ================================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ingress-nginx-tls-reader
+  namespace: adminer
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ingress-nginx-tls-reader
+  namespace: adminer
+subjects:
+  - kind: ServiceAccount
+    name: ingress-nginx
+    namespace: ingress-nginx
+roleRef:
+  kind: Role
+  name: ingress-nginx-tls-reader
+  apiGroup: rbac.authorization.k8s.io

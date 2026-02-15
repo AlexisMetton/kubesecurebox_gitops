@@ -1,0 +1,15 @@
+# Certificate Let's Encrypt pour adminer.kubesecurebox.com
+# =========================================================
+# DNS Challenge (ClusterIssuer Cloudflare) - fonctionne même si l'hôte n'est exposé que sur Tailscale
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: adminer-kubesecurebox-tls
+  namespace: adminer
+spec:
+  secretName: adminer-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - adminer.kubesecurebox.com

@@ -10,4 +10,4 @@ resources:
   - portfolio
   - cloudflare-tunnel
   - matomo
-  - phpmyadmin
+  - adminer
