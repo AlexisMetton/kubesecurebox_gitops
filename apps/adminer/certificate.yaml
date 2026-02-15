@@ -1,11 +1,14 @@
 # Certificate Let's Encrypt pour adminer.kubesecurebox.com
 # =========================================================
 # DNS Challenge (ClusterIssuer Cloudflare) - fonctionne même si l'hôte n'est exposé que sur Tailscale
+# sync-wave: -1 pour que le Certificate soit créé avant l'Ingress (cert-manager émet le secret en async)
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: adminer-kubesecurebox-tls
   namespace: adminer
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   secretName: adminer-kubesecurebox-tls
   issuerRef:

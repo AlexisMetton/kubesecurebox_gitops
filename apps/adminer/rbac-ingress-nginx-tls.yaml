@@ -1,5 +1,6 @@
-# RBAC : Ingress NGINX doit pouvoir lire le Secret TLS dans le namespace adminer
-# ================================================================================
+# RBAC : Ingress NGINX doit pouvoir lire et surveiller le Secret TLS dans le namespace adminer
+# ==========================================================================================
+# watch permet au contrôleur de recharger le cert quand le secret apparaît (cert-manager émet en async)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -8,7 +9,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
