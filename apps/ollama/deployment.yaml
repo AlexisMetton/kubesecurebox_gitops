@@ -18,6 +18,16 @@ spec:
       labels:
         app: ollama
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoringDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubesecurebox.io/ollama
+                    operator: In
+                    values:
+                      - "true"
       containers:
         - name: ollama
           image: ollama/ollama:latest
