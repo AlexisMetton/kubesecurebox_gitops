@@ -18,12 +18,12 @@ spec:
       labels:
         app: ollama
     spec:
+      # Obligatoire : Ollama ne tourne que sur les nœuds avec ce label (Pi 5 workers).
       affinity:
         nodeAffinity:
-          preferredDuringSchedulingIgnoringDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
+          requiredDuringSchedulingIgnoringDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
                   - key: kubesecurebox.io/ollama
                     operator: In
                     values:
