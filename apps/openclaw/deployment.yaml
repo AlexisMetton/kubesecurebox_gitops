@@ -59,6 +59,11 @@ spec:
                 configMapKeyRef:
                   name: openclaw-config
                   key: MEMORY_ENABLED
+            - name: NODE_OPTIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: NODE_OPTIONS
             - name: OPENCLAW_GATEWAY_TOKEN
               valueFrom:
                 configMapKeyRef:
@@ -72,11 +77,11 @@ spec:
                   key: DISCORD_TOKEN
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "100m"
-            limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
           livenessProbe:
             httpGet:
               path: /health
