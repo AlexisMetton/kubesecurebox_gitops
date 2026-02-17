@@ -48,6 +48,11 @@ spec:
                 configMapKeyRef:
                   name: openclaw-config
                   key: OLLAMA_MODEL
+            - name: OPENCLAW_PRIMARY_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: OPENCLAW_PRIMARY_MODEL
             - name: DISCORD_ENABLED
               valueFrom:
                 configMapKeyRef:

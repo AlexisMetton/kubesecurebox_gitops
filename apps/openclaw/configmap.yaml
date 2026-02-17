@@ -13,6 +13,8 @@ data:
   OLLAMA_API_KEY: "ollama-local"
   # Llama 3.2 : 1b (~1.3GB) ou 3b (~2GB). Pas de 2b sur Ollama.
   OLLAMA_MODEL: "llama3.2:1b"
+  # Force le modèle primaire (format: provider/model-id)
+  OPENCLAW_PRIMARY_MODEL: "ollama/llama3.2:1b"
   
   # Configuration Discord
   DISCORD_ENABLED: "true"
