@@ -1,0 +1,21 @@
+# Ollama - Modèle IA local (Llama 3 2B)
+# ======================================
+# Modèle léger adapté aux Raspberry Pi 8GB
+# Utilisé par OpenClaw pour les réponses IA
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ollama
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: ollama
+  app.kubernetes.io/part-of: kubesecurebox

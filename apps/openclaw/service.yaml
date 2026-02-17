@@ -1,0 +1,15 @@
+# Service OpenClaw - Interface web + API
+# =======================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw
+  namespace: openclaw
+spec:
+  selector:
+    app: openclaw
+  ports:
+    - port: 80
+      targetPort: 3000
+      name: http
+  type: ClusterIP

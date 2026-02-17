@@ -1,0 +1,11 @@
+# Namespace OpenClaw - Assistant IA avec Discord
+# ==============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openclaw
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"

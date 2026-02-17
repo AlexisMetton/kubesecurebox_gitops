@@ -1,0 +1,11 @@
+# Namespace Ollama - modèle IA local (Llama 3 2B)
+# ===============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollama
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: kubesecurebox
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"

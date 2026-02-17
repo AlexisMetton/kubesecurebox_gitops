@@ -1,0 +1,29 @@
+# Ingress OpenClaw - HTTPS via cert-manager
+# =========================================
+# Accessible sur Tailscale : https://openclaw.kubesecurebox.com
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openclaw-ingress
+  namespace: openclaw
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/upstream-vhost: "openclaw.kubesecurebox.com"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: openclaw.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openclaw
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - openclaw.kubesecurebox.com
+      secretName: openclaw-kubesecurebox-tls

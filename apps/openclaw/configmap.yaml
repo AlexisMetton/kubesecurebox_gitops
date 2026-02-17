@@ -1,0 +1,23 @@
+# ConfigMap OpenClaw - Configuration Discord + Ollama
+# ===================================================
+# Configuration pour intégration Discord et modèle IA local (Ollama)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-config
+  namespace: openclaw
+data:
+  # Configuration Ollama (modèle local)
+  # L'URL doit inclure /v1 pour l'API OpenAI-compatible
+  OLLAMA_BASE_URL: "http://ollama.ollama.svc.cluster.local:11434/v1"
+  OLLAMA_API_KEY: "ollama-local"
+  OLLAMA_MODEL: "llama3.2:2b"
+  
+  # Configuration Discord
+  DISCORD_ENABLED: "true"
+  # Token Discord à mettre dans Secret (créer un bot sur https://discord.com/developers/applications)
+  # DISCORD_TOKEN sera dans le Secret
+  
+  # Configuration générale
+  LOG_LEVEL: "info"
+  MEMORY_ENABLED: "true"

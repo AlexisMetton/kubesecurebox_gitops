@@ -1,0 +1,15 @@
+# PVC Ollama - stockage persistant pour les modèles IA
+# =====================================================
+# Les modèles téléchargés (Llama 3 2B ~1.5GB) sont stockés ici
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: ollama
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path

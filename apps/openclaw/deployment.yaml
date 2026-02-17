@@ -1,0 +1,88 @@
+# Deployment OpenClaw - Assistant IA avec Discord
+# ===============================================
+# Utilise Ollama (modèle local Llama 3 2B) pour les réponses IA
+# Intégration Discord pour la communication
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  namespace: openclaw
+  labels:
+    app: openclaw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openclaw
+  template:
+    metadata:
+      labels:
+        app: openclaw
+    spec:
+      containers:
+        - name: openclaw
+          # Image OpenClaw - utiliser la dernière version
+          # Alternative: ghcr.io/openclaw/openclaw:latest
+          image: coollabsio/openclaw:latest
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            # Configuration depuis ConfigMap
+            - name: OLLAMA_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: OLLAMA_BASE_URL
+            - name: OLLAMA_API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: OLLAMA_API_KEY
+            - name: OLLAMA_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: OLLAMA_MODEL
+            - name: DISCORD_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: DISCORD_ENABLED
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: LOG_LEVEL
+            - name: MEMORY_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: MEMORY_ENABLED
+            # Token Discord depuis Secret
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: DISCORD_TOKEN
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10

@@ -1,0 +1,15 @@
+# Service Ollama - API pour OpenClaw
+# ==================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+      name: http
+  type: ClusterIP

@@ -1,0 +1,23 @@
+# OpenClaw - Assistant IA avec Discord et Ollama
+# =============================================
+# Utilise Ollama (modèle local Llama 3 2B) pour les réponses IA
+# Intégration Discord pour la communication
+# Accessible sur Tailscale : https://openclaw.kubesecurebox.com
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openclaw
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - openclaw-secret-sealed.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: openclaw
+  app.kubernetes.io/part-of: kubesecurebox

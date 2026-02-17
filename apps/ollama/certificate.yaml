@@ -1,0 +1,17 @@
+# Certificate Let's Encrypt pour ollama.kubesecurebox.com
+# ========================================================
+# DNS Challenge (ClusterIssuer Cloudflare)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ollama-kubesecurebox-tls
+  namespace: ollama
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: ollama-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - ollama.kubesecurebox.com

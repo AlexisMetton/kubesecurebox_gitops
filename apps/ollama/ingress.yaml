@@ -1,0 +1,30 @@
+# Ingress Ollama - HTTPS via cert-manager
+# =======================================
+# Accessible sur Tailscale : https://ollama.kubesecurebox.com
+# Expose l'API REST Ollama (port 11434)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ollama-ingress
+  namespace: ollama
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/upstream-vhost: "ollama.kubesecurebox.com"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: ollama.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ollama
+                port:
+                  number: 11434
+  tls:
+    - hosts:
+        - ollama.kubesecurebox.com
+      secretName: ollama-kubesecurebox-tls

@@ -1,0 +1,17 @@
+# Certificate Let's Encrypt pour openclaw.kubesecurebox.com
+# =========================================================
+# DNS Challenge (ClusterIssuer Cloudflare)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: openclaw-kubesecurebox-tls
+  namespace: openclaw
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: openclaw-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - openclaw.kubesecurebox.com
