@@ -19,13 +19,17 @@ spec:
       labels:
         app: openclaw
     spec:
+      # Résout "browser" pour que nginx démarre sans sidecar browser (coollabsio image)
+      hostAliases:
+        - ip: "127.0.0.1"
+          hostnames:
+            - browser
       containers:
         - name: openclaw
-          # Image OpenClaw - utiliser la dernière version
-          # Alternative: ghcr.io/openclaw/openclaw:latest
+          # Image OpenClaw - nginx écoute sur 8080, gateway sur 18789
           image: coollabsio/openclaw:latest
           ports:
-            - containerPort: 3000
+            - containerPort: 8080
               name: http
           env:
             # Configuration depuis ConfigMap
@@ -84,15 +88,15 @@ spec:
               cpu: "1000m"
           livenessProbe:
             httpGet:
-              path: /health
-              port: 3000
-            initialDelaySeconds: 60
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 90
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
-              port: 3000
-            initialDelaySeconds: 30
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 10
