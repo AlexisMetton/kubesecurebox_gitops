@@ -21,3 +21,7 @@ data:
   # Configuration générale
   LOG_LEVEL: "info"
   MEMORY_ENABLED: "true"
+  
+  # Token Gateway OpenClaw (requis pour l'interface web)
+  # Généré avec: openssl rand -hex 32
+  OPENCLAW_GATEWAY_TOKEN: "ab593e01ad39bbf8eb003202f624c580d713a8f26cff8c0c4374c1b5de8de904"
