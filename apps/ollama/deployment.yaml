@@ -1,7 +1,6 @@
-# Deployment Ollama - modèle IA local (Llama 3 2B)
-# ================================================
-# Modèle léger adapté aux Raspberry Pi 8GB
-# Le modèle sera téléchargé au premier démarrage
+# Deployment Ollama - modèle IA local (Llama 3.2 1B)
+# ==================================================
+# Ressources augmentées pour améliorer la rapidité de l'inférence
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,11 +34,11 @@ spec:
               mountPath: /models
           resources:
             requests:
-              memory: "2Gi"
-              cpu: "500m"
+              memory: "3Gi"
+              cpu: "1000m"
             limits:
-              memory: "4Gi"
-              cpu: "2000m"
+              memory: "5Gi"
+              cpu: "3000m"
           livenessProbe:
             httpGet:
               path: /api/tags
