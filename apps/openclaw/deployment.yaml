@@ -86,17 +86,16 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
+          # Probes en exec : nginx peut n'écouter que sur 127.0.0.1, donc on sonde depuis le conteneur
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
+            exec:
+              command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
             initialDelaySeconds: 90
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
-            initialDelaySeconds: 60
+            exec:
+              command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
+            initialDelaySeconds: 90
             periodSeconds: 10
             timeoutSeconds: 10
