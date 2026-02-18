@@ -76,8 +76,13 @@ spec:
                 configMapKeyRef:
                   name: openclaw-config
                   key: OPENCLAW_GATEWAY_TOKEN
-            # Token Discord depuis Secret
+            # Token Discord depuis Secret (DISCORD_BOT_TOKEN = fallback attendu par OpenClaw)
             - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: DISCORD_TOKEN
+            - name: DISCORD_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: openclaw-secrets
