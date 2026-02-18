@@ -1,20 +1,23 @@
-# ConfigMap OpenClaw - Configuration Discord + Ollama
-# ===================================================
-# Configuration pour intégration Discord et modèle IA local (Ollama)
+# ConfigMap OpenClaw - Configuration Discord + DeepSeek
+# =====================================================
+# Configuration pour intégration Discord et modèle IA DeepSeek (API cloud)
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openclaw-config
   namespace: openclaw
 data:
-  # Configuration Ollama (modèle local)
-  # L'URL doit inclure /v1 pour l'API OpenAI-compatible
-  OLLAMA_BASE_URL: "http://ollama.ollama.svc.cluster.local:11434/v1"
-  OLLAMA_API_KEY: "ollama-local"
-  # Llama 3.2 : 1b (~1.3GB) ou 3b (~2GB). Pas de 2b sur Ollama.
-  OLLAMA_MODEL: "llama3.2:1b"
+  # Configuration DeepSeek (API cloud - beaucoup plus rapide qu'Ollama local)
+  # Clé API à mettre dans Secret (obtenir sur https://platform.deepseek.com/api_keys)
+  # DEEPSEEK_API_KEY sera dans le Secret
   # Force le modèle primaire (format: provider/model-id)
-  OPENCLAW_PRIMARY_MODEL: "ollama/llama3.2:1b"
+  # Modèles disponibles : deepseek-chat (général) ou deepseek-reasoner (raisonnement)
+  OPENCLAW_PRIMARY_MODEL: "deepseek/deepseek-chat"
+  
+  # Configuration Ollama (désactivée, gardée en commentaire pour référence)
+  # OLLAMA_BASE_URL: "http://ollama.ollama.svc.cluster.local:11434/v1"
+  # OLLAMA_API_KEY: "ollama-local"
+  # OLLAMA_MODEL: "llama3.2:1b"
   
   # Configuration Discord
   DISCORD_ENABLED: "true"

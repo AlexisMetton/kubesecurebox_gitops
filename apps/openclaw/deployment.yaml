@@ -1,6 +1,6 @@
 # Deployment OpenClaw - Assistant IA avec Discord
 # ===============================================
-# Utilise Ollama (modèle local Llama 3 2B) pour les réponses IA
+# Utilise DeepSeek (API cloud) pour les réponses IA - beaucoup plus rapide qu'Ollama local
 # Intégration Discord pour la communication
 apiVersion: apps/v1
 kind: Deployment
@@ -33,26 +33,17 @@ spec:
               name: http
           env:
             # Configuration depuis ConfigMap
-            - name: OLLAMA_BASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: openclaw-config
-                  key: OLLAMA_BASE_URL
-            - name: OLLAMA_API_KEY
-              valueFrom:
-                configMapKeyRef:
-                  name: openclaw-config
-                  key: OLLAMA_API_KEY
-            - name: OLLAMA_MODEL
-              valueFrom:
-                configMapKeyRef:
-                  name: openclaw-config
-                  key: OLLAMA_MODEL
             - name: OPENCLAW_PRIMARY_MODEL
               valueFrom:
                 configMapKeyRef:
                   name: openclaw-config
                   key: OPENCLAW_PRIMARY_MODEL
+            # Clé API DeepSeek depuis Secret
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: DEEPSEEK_API_KEY
             - name: DISCORD_ENABLED
               valueFrom:
                 configMapKeyRef:
