@@ -76,8 +76,9 @@ spec:
                 configMapKeyRef:
                   name: openclaw-config
                   key: OPENCLAW_GATEWAY_TOKEN
-            # Token Discord depuis Secret
-            - name: DISCORD_TOKEN
+            # Token Discord depuis Secret (utilisé comme fallback par OpenClaw)
+            # Note: Le Secret utilise la clé DISCORD_TOKEN, mais OpenClaw attend DISCORD_BOT_TOKEN comme variable d'env
+            - name: DISCORD_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: openclaw-secrets
@@ -93,13 +94,13 @@ spec:
           livenessProbe:
             exec:
               command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
-            initialDelaySeconds: 90
+            initialDelaySeconds: 120
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
             exec:
               command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
-            initialDelaySeconds: 90
+            initialDelaySeconds: 120
             periodSeconds: 10
             timeoutSeconds: 10
           volumeMounts:
