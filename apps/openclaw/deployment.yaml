@@ -38,8 +38,8 @@ spec:
                 configMapKeyRef:
                   name: openclaw-config
                   key: OPENCLAW_PRIMARY_MODEL
-            # Clé API DeepSeek depuis Secret
-            - name: DEEPSEEK_API_KEY
+            # Clé API DeepSeek depuis Secret (utilise OPENAI_API_KEY car DeepSeek est compatible OpenAI)
+            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: openclaw-secrets

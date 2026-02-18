@@ -9,10 +9,10 @@ metadata:
 data:
   # Configuration DeepSeek (API cloud directe - beaucoup plus rapide qu'Ollama local)
   # Clé API DeepSeek à mettre dans Secret (obtenir sur https://platform.deepseek.com/api_keys)
-  # DEEPSEEK_API_KEY sera dans le Secret
+  # DEEPSEEK_API_KEY sera dans le Secret mais injectée dans OPENAI_API_KEY (DeepSeek compatible OpenAI)
   # La configuration DeepSeek est dans openclaw-custom-config.yaml (fichier JSON monté)
   # Force le modèle primaire (format: provider/model-id)
-  OPENCLAW_PRIMARY_MODEL: "deepseek/deepseek-chat"
+  OPENCLAW_PRIMARY_MODEL: "openai/deepseek-chat"
   # Chemin vers le fichier JSON personnalisé (monté depuis ConfigMap)
   OPENCLAW_CUSTOM_CONFIG: "/app/config/openclaw.json"
   

@@ -1,6 +1,8 @@
 # ConfigMap OpenClaw - Configuration JSON personnalisée pour DeepSeek
 # ===================================================================
-# Ce fichier JSON configure DeepSeek directement via l'API DeepSeek
+# Ce fichier JSON configure DeepSeek via le provider OpenAI (compatible)
+# DeepSeek utilise une API compatible OpenAI, donc on utilise le provider "openai"
+# avec baseUrl pointant vers https://api.deepseek.com/v1
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,9 +14,9 @@ data:
       "models": {
         "mode": "merge",
         "providers": {
-          "deepseek": {
+          "openai": {
             "baseUrl": "https://api.deepseek.com/v1",
-            "apiKey": "${DEEPSEEK_API_KEY}",
+            "apiKey": "${OPENAI_API_KEY}",
             "api": "openai-completions",
             "models": [
               {
@@ -40,7 +42,7 @@ data:
       "agents": {
         "defaults": {
           "model": {
-            "primary": "deepseek/deepseek-chat"
+            "primary": "openai/deepseek-chat"
           }
         }
       }
