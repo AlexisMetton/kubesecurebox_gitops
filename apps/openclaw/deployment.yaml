@@ -44,6 +44,12 @@ spec:
                 secretKeyRef:
                   name: openclaw-secrets
                   key: DEEPSEEK_API_KEY
+            # Chemin vers le fichier JSON personnalisé (pour configurer DeepSeek)
+            - name: OPENCLAW_CUSTOM_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: OPENCLAW_CUSTOM_CONFIG
             - name: DISCORD_ENABLED
               valueFrom:
                 configMapKeyRef:
@@ -95,3 +101,11 @@ spec:
             initialDelaySeconds: 90
             periodSeconds: 10
             timeoutSeconds: 10
+          volumeMounts:
+            - name: custom-config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: custom-config
+          configMap:
+            name: openclaw-custom-config

@@ -1,18 +1,20 @@
 # ConfigMap OpenClaw - Configuration Discord + DeepSeek
 # =====================================================
-# Configuration pour intégration Discord et modèle IA DeepSeek (API cloud)
+# Configuration pour intégration Discord et modèle IA DeepSeek (API cloud directe)
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openclaw-config
   namespace: openclaw
 data:
-  # Configuration DeepSeek (API cloud - beaucoup plus rapide qu'Ollama local)
-  # Clé API à mettre dans Secret (obtenir sur https://platform.deepseek.com/api_keys)
+  # Configuration DeepSeek (API cloud directe - beaucoup plus rapide qu'Ollama local)
+  # Clé API DeepSeek à mettre dans Secret (obtenir sur https://platform.deepseek.com/api_keys)
   # DEEPSEEK_API_KEY sera dans le Secret
+  # La configuration DeepSeek est dans openclaw-custom-config.yaml (fichier JSON monté)
   # Force le modèle primaire (format: provider/model-id)
-  # Modèles disponibles : deepseek-chat (général) ou deepseek-reasoner (raisonnement)
   OPENCLAW_PRIMARY_MODEL: "deepseek/deepseek-chat"
+  # Chemin vers le fichier JSON personnalisé (monté depuis ConfigMap)
+  OPENCLAW_CUSTOM_CONFIG: "/app/config/openclaw.json"
   
   # Configuration Ollama (désactivée, gardée en commentaire pour référence)
   # OLLAMA_BASE_URL: "http://ollama.ollama.svc.cluster.local:11434/v1"
