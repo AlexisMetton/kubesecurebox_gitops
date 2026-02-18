@@ -15,6 +15,7 @@ resources:
   - configmap.yaml
   - openclaw-custom-config.yaml
   - openclaw-secret-sealed.yaml
+  - pvc.yaml
   - deployment.yaml
   - service.yaml
   - certificate.yaml

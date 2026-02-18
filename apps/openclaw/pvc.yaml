@@ -1,0 +1,16 @@
+# PVC OpenClaw - stockage persistant pour état, config et mémoire
+# ================================================================
+# /data dans l'image coollabsio : .openclaw/ (state, config), workspace/, MEMORY.md
+# Sans ce volume, la mémoire et la config runtime sont perdues à chaque redémarrage du pod.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openclaw-data
+  namespace: openclaw
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path

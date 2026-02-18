@@ -89,24 +89,32 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
-          # Probes en exec : nginx peut n'écouter que sur 127.0.0.1, donc on sonde depuis le conteneur
+          # Probes : /healthz exposé par nginx (doc coollabsio). Délais longs car le gateway
+          # (config, Discord, etc.) peut mettre 2–3 min à être prêt après un redémarrage.
           livenessProbe:
             exec:
               command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
-            initialDelaySeconds: 90
+            initialDelaySeconds: 180
             periodSeconds: 30
             timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             exec:
               command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
-            initialDelaySeconds: 90
-            periodSeconds: 10
+            initialDelaySeconds: 180
+            periodSeconds: 15
             timeoutSeconds: 10
+            failureThreshold: 10
           volumeMounts:
             - name: custom-config
               mountPath: /app/config
               readOnly: true
+            - name: data
+              mountPath: /data
       volumes:
         - name: custom-config
           configMap:
             name: openclaw-custom-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: openclaw-data
