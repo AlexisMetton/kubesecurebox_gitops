@@ -45,5 +45,12 @@ data:
             "primary": "openai/deepseek-chat"
           }
         }
+      },
+      "skills": {
+        "entries": {
+          "kubectl": {
+            "enabled": true
+          }
+        }
       }
     }

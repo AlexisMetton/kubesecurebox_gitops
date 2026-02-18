@@ -10,6 +10,8 @@ namespace: openclaw
 
 resources:
   - namespace.yaml
+  - serviceaccount.yaml
+  - rbac.yaml
   - configmap.yaml
   - openclaw-custom-config.yaml
   - openclaw-secret-sealed.yaml

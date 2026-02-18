@@ -19,6 +19,7 @@ spec:
       labels:
         app: openclaw
     spec:
+      serviceAccountName: openclaw
       # Résout "browser" pour que nginx démarre sans sidecar browser (coollabsio image)
       hostAliases:
         - ip: "127.0.0.1"
