@@ -52,5 +52,10 @@ data:
             "enabled": true
           }
         }
+      },
+      "channels": {
+        "discord": {
+          "enabled": true
+        }
       }
     }
