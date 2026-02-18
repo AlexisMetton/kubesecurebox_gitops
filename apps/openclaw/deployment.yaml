@@ -29,6 +29,12 @@ spec:
         - name: openclaw
           # Image OpenClaw - nginx écoute sur 8080, gateway sur 18789
           image: coollabsio/openclaw:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              /docker-entrypoint.sh || true
+              exec sleep infinity
           ports:
             - containerPort: 8080
               name: http
