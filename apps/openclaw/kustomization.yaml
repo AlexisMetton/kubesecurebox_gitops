@@ -21,6 +21,6 @@ resources:
   - ingress.yaml
   - rbac-ingress-nginx-tls.yaml
 
-labels:
+commonLabels:
   app.kubernetes.io/name: openclaw
   app.kubernetes.io/part-of: kubesecurebox
