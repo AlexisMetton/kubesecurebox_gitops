@@ -1,7 +1,8 @@
 # PVC OpenClaw - stockage persistant pour état, config et mémoire
 # ================================================================
 # /data dans l'image coollabsio : .openclaw/ (state, config), workspace/, MEMORY.md
-# Sans ce volume, la mémoire et la config runtime sont perdues à chaque redémarrage du pod.
+# Utilise la StorageClass par défaut du cluster (comme Matomo) = ton disque 4 To si c'est le défaut.
+# Pas de storageClassName = même backend que matomo-data, souvent NFS ou stockage partagé.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -13,4 +14,4 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: local-path
+  # Pas de storageClassName : utilise la default (comme Matomo), typiquement ton DD 4 To
