@@ -1,48 +1,19 @@
-# RBAC OpenClaw - Permissions kubectl sur le cluster
-# ==================================================
-# ClusterRole et ClusterRoleBinding pour que le ServiceAccount openclaw
-# puisse exécuter kubectl (get, list, watch, create, update, delete, patch)
-# sur les ressources courantes du cluster.
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: openclaw-kubectl
-  labels:
-    app.kubernetes.io/name: openclaw
-    app.kubernetes.io/part-of: kubesecurebox
-rules:
-  # Core
-  - apiGroups: [""]
-    resources: ["namespaces", "pods", "pods/log", "pods/exec", "services", "configmaps", "secrets", "persistentvolumeclaims", "persistentvolumes", "nodes", "events", "serviceaccounts", "resourcequotas", "limitranges"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses", "networkpolicies"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["cert-manager.io"]
-    resources: ["certificates", "certificaterequests", "issuers", "clusterissuers"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
-    verbs: ["get", "list", "watch"]
+# RBAC OpenClaw - Droits complets sur le cluster (cluster-admin)
+# ===============================================================
+# Le ServiceAccount openclaw est lié au ClusterRole cluster-admin (intégré Kubernetes).
+# OpenClaw peut ainsi exécuter toute action kubectl sur toutes les ressources du cluster.
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: openclaw-kubectl
+  name: openclaw-cluster-admin
   labels:
     app.kubernetes.io/name: openclaw
     app.kubernetes.io/part-of: kubesecurebox
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: openclaw-kubectl
+  name: cluster-admin
 subjects:
   - kind: ServiceAccount
     name: openclaw
