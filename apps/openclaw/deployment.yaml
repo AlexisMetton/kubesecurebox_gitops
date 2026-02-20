@@ -20,6 +20,14 @@ spec:
         app: openclaw
     spec:
       serviceAccountName: openclaw
+      # Autoriser à tourner sur un nœud tainté (ex. control-plane) où le PV local-path est attaché
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
       # Résout "browser" pour que nginx démarre sans sidecar browser (coollabsio image)
       hostAliases:
         - ip: "127.0.0.1"
