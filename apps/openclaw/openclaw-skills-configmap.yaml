@@ -1,0 +1,17 @@
+# ConfigMap skills OpenClaw - généré par scripts/build-skills-configmap.sh
+# Source : skills/<nom>/SKILL.md — ne pas éditer ce fichier à la main, relancer le script.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-skills
+  namespace: openclaw
+data:
+  hello/SKILL.md: |
+    ---
+    name: hello
+    description: Skill de démo pour tester le chargement des skills personnalisés dans OpenClaw.
+    ---
+    
+    Ce skill sert uniquement à vérifier que les skills personnalisés sont bien chargés.
+    Tu peux l'invoquer (par exemple avec /hello ou en demandant "utilise le skill hello") pour confirmer que tout fonctionne.
+

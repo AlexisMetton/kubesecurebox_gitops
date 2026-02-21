@@ -15,21 +15,13 @@ resources:
   - configmap.yaml
   - openclaw-custom-config.yaml
   - openclaw-secret-sealed.yaml
+  - openclaw-skills-configmap.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
   - certificate.yaml
   - ingress.yaml
   - rbac-ingress-nginx-tls.yaml
-
-# ConfigMap skills : généré depuis skills/<nom>/SKILL.md (une ligne par skill)
-# Syntaxe key=path pour avoir /data/skills/<nom>/SKILL.md dans le pod
-configMapGenerator:
-  - name: openclaw-skills
-    files:
-      - hello/SKILL.md=skills/hello/SKILL.md
-    options:
-      disableNameSuffixHash: true
 
 commonLabels:
   app.kubernetes.io/name: openclaw
