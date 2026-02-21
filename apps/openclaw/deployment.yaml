@@ -117,6 +117,13 @@ spec:
                 secretKeyRef:
                   name: openclaw-secrets
                   key: OPENAI_AUDIO_API_KEY
+            # Voice-call (Twilio) : valeurs factices pour que la config se charge ; plugin disabled. Remplacer par secret quand Twilio activé.
+            - name: TWILIO_ACCOUNT_SID
+              value: ""
+            - name: TWILIO_AUTH_TOKEN
+              value: ""
+            - name: TWILIO_FROM_NUMBER
+              value: ""
           resources:
             requests:
               memory: "512Mi"
