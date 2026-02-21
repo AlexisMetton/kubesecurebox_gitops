@@ -26,7 +26,6 @@ spec:
           hostnames:
             - browser
       initContainers:
-        # install-voice-call-plugin retiré tant que voice-call est disabled ; réactiver avec Twilio
         - name: copy-skills
           image: busybox:latest
           command:
