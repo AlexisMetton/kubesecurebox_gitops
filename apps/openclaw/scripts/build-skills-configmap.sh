@@ -13,7 +13,7 @@ cd "$OPENCLAW_DIR"
 
 cat > "$OUTPUT_FILE" << 'HEADER'
 # ConfigMap skills OpenClaw - généré par scripts/build-skills-configmap.sh
-# Source : skills/<nom>/SKILL.md — ne pas éditer ce fichier à la main, relancer le script.
+# Source : skills/<nom>/SKILL.md. Clés = noms de dossiers (sans /). L'initContainer copie vers /data/skills/<nom>/SKILL.md.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -22,12 +22,13 @@ metadata:
 data:
 HEADER
 
+# Clés = noms de dossiers (sans slash, requis par Kubernetes)
 for skill_dir in "$SKILLS_DIR"/*/; do
   [ -d "$skill_dir" ] || continue
   skill_name="$(basename "$skill_dir")"
   skill_file="$skill_dir/SKILL.md"
   [ -f "$skill_file" ] || continue
-  echo "  $skill_name/SKILL.md: |" >> "$OUTPUT_FILE"
+  echo "  $skill_name: |" >> "$OUTPUT_FILE"
   while IFS= read -r line; do
     printf '    %s\n' "$line" >> "$OUTPUT_FILE"
   done < "$skill_file"

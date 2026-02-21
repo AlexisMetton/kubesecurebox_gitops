@@ -35,6 +35,24 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+        - name: copy-skills
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              for f in /config/skills/*; do
+                [ -f "$f" ] || continue
+                n="$(basename "$f")"
+                mkdir -p "/data/skills/$n"
+                cp "$f" "/data/skills/$n/SKILL.md"
+              done
+          volumeMounts:
+            - name: openclaw-skills
+              mountPath: /config/skills
+              readOnly: true
+            - name: data
+              mountPath: /data
       containers:
         - name: openclaw
           # Image OpenClaw - nginx écoute sur 8080, gateway sur 18789
@@ -136,9 +154,6 @@ spec:
               readOnly: true
             - name: data
               mountPath: /data
-            - name: openclaw-skills
-              mountPath: /data/skills
-              readOnly: true
       volumes:
         - name: custom-config
           configMap:

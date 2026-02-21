@@ -1,12 +1,12 @@
 # ConfigMap skills OpenClaw - généré par scripts/build-skills-configmap.sh
-# Source : skills/<nom>/SKILL.md — ne pas éditer ce fichier à la main, relancer le script.
+# Source : skills/<nom>/SKILL.md. Clés = noms de dossiers (sans /). L'initContainer copie vers /data/skills/<nom>/SKILL.md.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openclaw-skills
   namespace: openclaw
 data:
-  hello/SKILL.md: |
+  hello: |
     ---
     name: hello
     description: Skill de démo pour tester le chargement des skills personnalisés dans OpenClaw.

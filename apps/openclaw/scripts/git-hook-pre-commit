@@ -1,0 +1,19 @@
+#!/bin/sh
+# Hook pre-commit : régénère openclaw-skills-configmap.yaml si un fichier sous openclaw/skills/ est dans le commit.
+# Installer avec : depuis la racine du repo Git, cp apps/openclaw/scripts/git-hook-pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+if ! git diff --cached --name-only | grep -q 'openclaw/skills/'; then
+  exit 0
+fi
+SCRIPT=$(find "$ROOT" -path '*/.git/*' -prune -o -name 'build-skills-configmap.sh' -type f -print 2>/dev/null | head -1)
+if [ -z "$SCRIPT" ]; then
+  exit 0
+fi
+OPENCLAW_DIR=$(dirname "$(dirname "$SCRIPT")")
+if [ ! -d "$OPENCLAW_DIR" ] || [ ! -f "$OPENCLAW_DIR/openclaw-skills-configmap.yaml" ]; then
+  exit 0
+fi
+(cd "$OPENCLAW_DIR" && bash scripts/build-skills-configmap.sh) 2>/dev/null || exit 0
+git add "$OPENCLAW_DIR/openclaw-skills-configmap.yaml" 2>/dev/null || true
+exit 0
