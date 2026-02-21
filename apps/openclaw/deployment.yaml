@@ -32,9 +32,23 @@ spec:
           env:
             - name: OPENCLAW_STATE_DIR
               value: "/data/.openclaw"
+            # Requis pour que openclaw puisse charger la config (référence OPENAI_API_KEY)
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: DEEPSEEK_API_KEY
+            - name: OPENCLAW_CUSTOM_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: openclaw-config
+                  key: OPENCLAW_CUSTOM_CONFIG
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: custom-config
+              mountPath: /app/config
+              readOnly: true
         - name: copy-skills
           image: busybox:latest
           command:
