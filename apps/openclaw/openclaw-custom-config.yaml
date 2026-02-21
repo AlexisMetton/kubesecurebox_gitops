@@ -98,29 +98,6 @@ data:
         }
       },
       "plugins": {
-        "entries": {
-          "voice-call": {
-            "enabled": false,
-            "config": {
-              "provider": "twilio",
-              "fromNumber": "${TWILIO_FROM_NUMBER}",
-              "twilio": {
-                "accountSid": "${TWILIO_ACCOUNT_SID}",
-                "authToken": "${TWILIO_AUTH_TOKEN}"
-              },
-              "serve": {
-                "port": 3334,
-                "path": "/voice/webhook"
-              },
-              "publicUrl": "https://openclaw.kubesecurebox.com/voice/webhook",
-              "webhookSecurity": {
-                "allowedHosts": ["openclaw.kubesecurebox.com"]
-              },
-              "outbound": {
-                "defaultMode": "notify"
-              }
-            }
-          }
-        }
+        "entries": {}
       }
     }

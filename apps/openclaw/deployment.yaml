@@ -131,22 +131,21 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1000m"
-          # Probes : /healthz exposé par nginx (doc coollabsio). Délais longs car le gateway
-          # (config, Discord, etc.) peut mettre 2–3 min à être prêt après un redémarrage.
+          # Probes : /healthz exposé par nginx (doc coollabsio). Délais très longs : Discord + gateway peuvent prendre 5 min.
           livenessProbe:
             exec:
               command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
-            initialDelaySeconds: 180
+            initialDelaySeconds: 300
             periodSeconds: 30
             timeoutSeconds: 10
-            failureThreshold: 5
+            failureThreshold: 6
           readinessProbe:
             exec:
               command: ["curl", "-sf", "http://127.0.0.1:8080/healthz"]
-            initialDelaySeconds: 180
+            initialDelaySeconds: 300
             periodSeconds: 15
             timeoutSeconds: 10
-            failureThreshold: 10
+            failureThreshold: 12
           volumeMounts:
             - name: custom-config
               mountPath: /app/config
