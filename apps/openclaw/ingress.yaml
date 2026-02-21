@@ -16,6 +16,27 @@ spec:
     - host: openclaw.kubesecurebox.com
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: openclaw
+                port:
+                  number: 18789
+          - path: /healthz
+            pathType: Prefix
+            backend:
+              service:
+                name: openclaw
+                port:
+                  number: 18789
+          - path: /voice
+            pathType: Prefix
+            backend:
+              service:
+                name: openclaw
+                port:
+                  number: 3334
           - path: /
             pathType: Prefix
             backend:

@@ -1,8 +1,7 @@
-# ConfigMap OpenClaw - Configuration JSON personnalisée pour DeepSeek
-# ===================================================================
-# Ce fichier JSON configure DeepSeek via le provider OpenAI (compatible)
-# DeepSeek utilise une API compatible OpenAI, donc on utilise le provider "openai"
-# avec baseUrl pointant vers https://api.deepseek.com/v1
+# ConfigMap OpenClaw - Configuration JSON personnalisée pour DeepSeek + audio OpenAI
+# ================================================================================
+# DeepSeek : provider "openai" avec baseUrl api.deepseek.com (texte uniquement).
+# Audio (Whisper/TTS) : provider "openai-audio" avec api.openai.com (OPENAI_AUDIO_API_KEY).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,6 +35,12 @@ data:
                 "maxTokens": 65536
               }
             ]
+          },
+          "openai-audio": {
+            "baseUrl": "https://api.openai.com/v1",
+            "apiKey": "${OPENAI_AUDIO_API_KEY}",
+            "api": "openai-completions",
+            "models": []
           }
         }
       },
@@ -55,7 +60,67 @@ data:
       },
       "channels": {
         "discord": {
-          "enabled": true
+          "enabled": true,
+          "dmPolicy": "allowlist",
+          "allowFrom": ["571976616402747402"],
+          "groupPolicy": "allowlist",
+          "groupAllowFrom": ["1473390625671086142"],
+          "groups": {
+            "1473390625671086142": { "requireMention": false }
+          }
+        },
+        "whatsapp": {
+          "enabled": true,
+          "dmPolicy": "allowlist",
+          "allowFrom": ["+33785601593"]
+        }
+      },
+      "tools": {
+        "media": {
+          "audio": {
+            "enabled": true,
+            "maxBytes": 20971520,
+            "models": [
+              { "provider": "openai-audio", "model": "gpt-4o-mini-transcribe" }
+            ]
+          }
+        }
+      },
+      "messages": {
+        "tts": {
+          "auto": "off",
+          "provider": "openai",
+          "openai": {
+            "apiKey": "${OPENAI_AUDIO_API_KEY}",
+            "model": "gpt-4o-mini-tts",
+            "voice": "alloy"
+          }
+        }
+      },
+      "plugins": {
+        "entries": {
+          "voice-call": {
+            "enabled": false,
+            "config": {
+              "provider": "twilio",
+              "fromNumber": "${TWILIO_FROM_NUMBER}",
+              "twilio": {
+                "accountSid": "${TWILIO_ACCOUNT_SID}",
+                "authToken": "${TWILIO_AUTH_TOKEN}"
+              },
+              "serve": {
+                "port": 3334,
+                "path": "/voice/webhook"
+              },
+              "publicUrl": "https://openclaw.kubesecurebox.com/voice/webhook",
+              "webhookSecurity": {
+                "allowedHosts": ["openclaw.kubesecurebox.com"]
+              },
+              "outbound": {
+                "defaultMode": "notify"
+              }
+            }
+          }
         }
       }
     }

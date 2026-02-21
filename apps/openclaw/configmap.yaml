@@ -34,4 +34,4 @@ data:
   
   # Token Gateway OpenClaw (requis pour l'interface web)
   # Généré avec: openssl rand -hex 32
-  OPENCLAW_GATEWAY_TOKEN: "ab593e01ad39bbf8eb003202f624c580d713a8f26cff8c0c4374c1b5de8de904"
+  OPENCLAW_GATEWAY_TOKEN: "ef10eaa8012f9a04a721f0df5ec6c22c23d745f6463b2027127a39e9c5147f48"

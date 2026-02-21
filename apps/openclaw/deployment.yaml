@@ -25,6 +25,16 @@ spec:
         - ip: "127.0.0.1"
           hostnames:
             - browser
+      initContainers:
+        - name: install-voice-call-plugin
+          image: coollabsio/openclaw:latest
+          command: ["openclaw", "plugins", "install", "@openclaw/voice-call"]
+          env:
+            - name: OPENCLAW_STATE_DIR
+              value: "/data/.openclaw"
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: openclaw
           # Image OpenClaw - nginx écoute sur 8080, gateway sur 18789
@@ -32,6 +42,10 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+            - containerPort: 18789
+              name: gateway
+            - containerPort: 3334
+              name: voice-webhook
           env:
             # Configuration depuis ConfigMap
             - name: OPENCLAW_PRIMARY_MODEL
@@ -87,6 +101,12 @@ spec:
                 secretKeyRef:
                   name: openclaw-secrets
                   key: DISCORD_TOKEN
+            # Clé OpenAI pour l'audio uniquement (Whisper/TTS ; DeepSeek ne gère pas l'audio)
+            - name: OPENAI_AUDIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: OPENAI_AUDIO_API_KEY
           resources:
             requests:
               memory: "512Mi"
@@ -116,10 +136,16 @@ spec:
               readOnly: true
             - name: data
               mountPath: /data
+            - name: openclaw-skills
+              mountPath: /data/skills
+              readOnly: true
       volumes:
         - name: custom-config
           configMap:
             name: openclaw-custom-config
+        - name: openclaw-skills
+          configMap:
+            name: openclaw-skills
         - name: data
           persistentVolumeClaim:
             claimName: openclaw-data

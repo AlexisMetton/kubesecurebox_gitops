@@ -12,4 +12,10 @@ spec:
     - port: 80
       targetPort: 8080
       name: http
+    - port: 18789
+      targetPort: 18789
+      name: gateway
+    - port: 3334
+      targetPort: 3334
+      name: voice-webhook
   type: ClusterIP

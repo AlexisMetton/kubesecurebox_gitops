@@ -22,6 +22,15 @@ resources:
   - ingress.yaml
   - rbac-ingress-nginx-tls.yaml
 
+# ConfigMap skills : généré depuis skills/<nom>/SKILL.md (une ligne par skill)
+# Syntaxe key=path pour avoir /data/skills/<nom>/SKILL.md dans le pod
+configMapGenerator:
+  - name: openclaw-skills
+    files:
+      - hello/SKILL.md=skills/hello/SKILL.md
+    options:
+      disableNameSuffixHash: true
+
 commonLabels:
   app.kubernetes.io/name: openclaw
   app.kubernetes.io/part-of: kubesecurebox

@@ -1,0 +1,518 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: openclaw
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw
+  namespace: openclaw
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: ingress-nginx-tls-reader
+  namespace: openclaw
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: ingress-nginx-tls-reader
+  namespace: openclaw
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ingress-nginx-tls-reader
+subjects:
+- kind: ServiceAccount
+  name: ingress-nginx
+  namespace: ingress-nginx
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: openclaw
+  namespace: openclaw
+---
+apiVersion: v1
+data:
+  DISCORD_ENABLED: "true"
+  LOG_LEVEL: info
+  MEMORY_ENABLED: "true"
+  NODE_OPTIONS: --max-old-space-size=768
+  OPENCLAW_CUSTOM_CONFIG: /app/config/openclaw.json
+  OPENCLAW_GATEWAY_TOKEN: ef10eaa8012f9a04a721f0df5ec6c22c23d745f6463b2027127a39e9c5147f48
+  OPENCLAW_PRIMARY_MODEL: openai/deepseek-chat
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-config
+  namespace: openclaw
+---
+apiVersion: v1
+data:
+  openclaw.json: |
+    {
+      "models": {
+        "mode": "merge",
+        "providers": {
+          "openai": {
+            "baseUrl": "https://api.deepseek.com/v1",
+            "apiKey": "${OPENAI_API_KEY}",
+            "api": "openai-completions",
+            "models": [
+              {
+                "id": "deepseek-chat",
+                "name": "DeepSeek Chat (V3.2)",
+                "reasoning": false,
+                "input": ["text"],
+                "contextWindow": 128000,
+                "maxTokens": 8192
+              },
+              {
+                "id": "deepseek-reasoner",
+                "name": "DeepSeek Reasoner (V3.2)",
+                "reasoning": true,
+                "input": ["text"],
+                "contextWindow": 128000,
+                "maxTokens": 65536
+              }
+            ]
+          },
+          "openai-audio": {
+            "baseUrl": "https://api.openai.com/v1",
+            "apiKey": "${OPENAI_AUDIO_API_KEY}",
+            "api": "openai-completions",
+            "models": []
+          }
+        }
+      },
+      "agents": {
+        "defaults": {
+          "model": {
+            "primary": "openai/deepseek-chat"
+          }
+        }
+      },
+      "skills": {
+        "load": {
+          "extraDirs": ["/data/skills/skills"]
+        },
+        "entries": {
+          "kubectl": {
+            "enabled": true
+          }
+        }
+      },
+      "channels": {
+        "discord": {
+          "enabled": true,
+          "dmPolicy": "allowlist",
+          "allowFrom": ["571976616402747402"],
+          "groupPolicy": "allowlist",
+          "groupAllowFrom": ["1473390625671086142"],
+          "groups": {
+            "1473390625671086142": { "requireMention": false }
+          }
+        },
+        "whatsapp": {
+          "enabled": true,
+          "dmPolicy": "allowlist",
+          "allowFrom": ["+33785601593"]
+        }
+      },
+      "tools": {
+        "media": {
+          "audio": {
+            "enabled": true,
+            "maxBytes": 20971520,
+            "models": [
+              { "provider": "openai-audio", "model": "gpt-4o-mini-transcribe" }
+            ]
+          }
+        }
+      },
+      "messages": {
+        "tts": {
+          "auto": "off",
+          "provider": "openai",
+          "openai": {
+            "apiKey": "${OPENAI_AUDIO_API_KEY}",
+            "model": "gpt-4o-mini-tts",
+            "voice": "alloy"
+          }
+        }
+      },
+      "plugins": {
+        "entries": {
+          "voice-call": {
+            "enabled": false,
+            "config": {
+              "provider": "twilio",
+              "fromNumber": "${TWILIO_FROM_NUMBER}",
+              "twilio": {
+                "accountSid": "${TWILIO_ACCOUNT_SID}",
+                "authToken": "${TWILIO_AUTH_TOKEN}"
+              },
+              "serve": {
+                "port": 3334,
+                "path": "/voice/webhook"
+              },
+              "publicUrl": "https://openclaw.kubesecurebox.com/voice/webhook",
+              "webhookSecurity": {
+                "allowedHosts": ["openclaw.kubesecurebox.com"]
+              },
+              "outbound": {
+                "defaultMode": "notify"
+              }
+            }
+          }
+        }
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-custom-config
+  namespace: openclaw
+---
+apiVersion: v1
+data:
+  SKILL.md: "---\r\nname: hello\r\ndescription: Skill de démo pour tester le chargement
+    des skills personnalisés dans OpenClaw.\r\n---\r\n\r\nCe skill sert uniquement
+    à vérifier que les skills personnalisés sont bien chargés.\r\nTu peux l'invoquer
+    (par exemple avec /hello ou en demandant \"utilise le skill hello\") pour confirmer
+    que tout fonctionne.\r\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-skills
+  namespace: openclaw
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw
+  namespace: openclaw
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: gateway
+    port: 18789
+    targetPort: 18789
+  - name: voice-webhook
+    port: 3334
+    targetPort: 3334
+  selector:
+    app: openclaw
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-data
+  namespace: openclaw
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: openclaw
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw
+  namespace: openclaw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openclaw
+      app.kubernetes.io/name: openclaw
+      app.kubernetes.io/part-of: kubesecurebox
+  template:
+    metadata:
+      labels:
+        app: openclaw
+        app.kubernetes.io/name: openclaw
+        app.kubernetes.io/part-of: kubesecurebox
+    spec:
+      containers:
+      - env:
+        - name: OPENCLAW_PRIMARY_MODEL
+          valueFrom:
+            configMapKeyRef:
+              key: OPENCLAW_PRIMARY_MODEL
+              name: openclaw-config
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: DEEPSEEK_API_KEY
+              name: openclaw-secrets
+        - name: OPENCLAW_CUSTOM_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              key: OPENCLAW_CUSTOM_CONFIG
+              name: openclaw-config
+        - name: DISCORD_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              key: DISCORD_ENABLED
+              name: openclaw-config
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              key: LOG_LEVEL
+              name: openclaw-config
+        - name: MEMORY_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              key: MEMORY_ENABLED
+              name: openclaw-config
+        - name: NODE_OPTIONS
+          valueFrom:
+            configMapKeyRef:
+              key: NODE_OPTIONS
+              name: openclaw-config
+        - name: OPENCLAW_GATEWAY_TOKEN
+          valueFrom:
+            configMapKeyRef:
+              key: OPENCLAW_GATEWAY_TOKEN
+              name: openclaw-config
+        - name: DISCORD_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: DISCORD_TOKEN
+              name: openclaw-secrets
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: DISCORD_TOKEN
+              name: openclaw-secrets
+        - name: OPENAI_AUDIO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: OPENAI_AUDIO_API_KEY
+              name: openclaw-secrets
+        image: coollabsio/openclaw:latest
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - -sf
+            - http://127.0.0.1:8080/healthz
+          failureThreshold: 5
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 10
+        name: openclaw
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 18789
+          name: gateway
+        - containerPort: 3334
+          name: voice-webhook
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - -sf
+            - http://127.0.0.1:8080/healthz
+          failureThreshold: 10
+          initialDelaySeconds: 180
+          periodSeconds: 15
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /app/config
+          name: custom-config
+          readOnly: true
+        - mountPath: /data
+          name: data
+        - mountPath: /data/skills
+          name: openclaw-skills
+          readOnly: true
+      hostAliases:
+      - hostnames:
+        - browser
+        ip: 127.0.0.1
+      initContainers:
+      - command:
+        - openclaw
+        - plugins
+        - install
+        - '@openclaw/voice-call'
+        env:
+        - name: OPENCLAW_STATE_DIR
+          value: /data/.openclaw
+        image: coollabsio/openclaw:latest
+        name: install-voice-call-plugin
+        volumeMounts:
+        - mountPath: /data
+          name: data
+      serviceAccountName: openclaw
+      volumes:
+      - configMap:
+          name: openclaw-custom-config
+        name: custom-config
+      - configMap:
+          name: openclaw-skills
+        name: openclaw-skills
+      - name: data
+        persistentVolumeClaim:
+          claimName: openclaw-data
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-secrets
+  namespace: openclaw
+spec:
+  encryptedData:
+    DEEPSEEK_API_KEY: AgCKgHR/sD5EOH1NYuNC3tqlNQTwdW9MRWr3bWCO0jLtdHRcqNPpqaR3cOQTovl4ehQIW45fpaHaM6mWeuREpdy1LoSX1XeSC9zQkic5TkvDyO5NJ5EFGDkN9JOm7CQJWzDygFSz5iCWd8oUXRtxBfx5+6za7xuIThN3mjtEIiNbKyG5uigDm1TT7IbV36l+F1oaNQjbLVW5oaxzr58kQBgtqYZYD5FVpVSFarXtuaVQbmfk7jMj07gUbIp9JLVyuSKx301KxCt3cj4DOrdHLLjQBYwcL/D0swfH3rgAtJnG01DRNYBbOBxgXGCwA+ZrQ4fjVFDfwkpRDP4zQZeE+z2H3ufkZWqskS3T+ZBUAmZohe/8Fke7g/ucL4IsMCVdIF+q4LmLnZupruMoJ0GdOH3M9OYdAoFWBh4+xrY0rp5IbRDUiL5aoMM3MCdZeGXF3JgkN8iAsXBEiO5e5ew/R4l8wdscEsAP96k08vwh9Ba2/GRkVIbRn4nAkLoV15jHGRtWieUX+AQmuFUR/kVJP2GGbBkKWP2pYkJ5ToWcC5UBoR/AR6qbByAndQVi6jOPXii78BkPByeV65n/n3KlEXVgntY0Vl7rkD9pWn1/rf+XJBq0qUsdEu0lS6hdt7jv1/ExFL4AHOQLmNg1WWFQ4r+Ruz36PZeNb4MXWZr5YfFiTnrV7pclRiF7UbhNOzCTlcCiljjzUsVvrZxKl6HOV5DhvAJkZjTR85OHNeVRarPbnjoxrg==
+    DISCORD_TOKEN: AgAWiKonUtE3JU2KeDHvBWnHDDDtI/KAUiw1DnreyWLJOs2gm7usyKG9fgo8p0uKDj+mSJfwrZSlOa8yVGSx2kBRLbSQipK/kT4CG5/wWRwbGeVrLFh6pok/LinVxj0DJlw8WIhIp0d4Z17IxLwp+nUZuQMvxb5J81mztnrZ2B/QsBdLTeVoV89dsM0W+5mcy1lwC6HwkzjAE9fBLRlu0ukvLxzqCNOWklfyJbUxiVzetR8pj5upgBoT+4RgGNRkQhQebjghCTyAlcXVYQEslBkgnnhKjWmuBVuyItHk0jX9ZN417Q/lioyZ+NV6iWn5nSHMcBzQpJNBIxtsgMsFPA3o8cSB0D1zh3s4i+FSvTDJRnkpvp52D+YCjm5Dx2qj0/wAC2t48ZReM1QtmLVfiP3EA7sIDnyN3C4m/3yO21a9IANDPnKYbtvdWrGO7L+BYJ4rSNv+/Mn/rWPDqVozkcVi+bjwGwf+JB2+uEHMKTbwqYJnB79zVHS/MCuqZP/yPZKHT2+h346f3+ZdlFbx9m5TLIxQhR04OoM7wxGsSVTwu97aIV6zhUmL/7Ig32DZJQermo+4SFQtONx26yebI7mYDyv3++AgusWjVuCb77zqn8FVDChMHqdC9B8gxSTSmifM3dOSC5rrAV8wD0fkKbcjjoKajND0TZjj2GjqYHLaYeN7BERNbDuUyTrFWFFb1gIc/YjLEcJXKWQvvDly+TEywYvoTjrN+EM8OwX6ggSeqIlw8AdqXqDXLUDhSn3mrEoanpcWlvBZ8p27/jTo4fN55YpIwhtin8E=
+    OPENAI_AUDIO_API_KEY: AgCRc5fY+CoUKMMi0G6yg1MClVotlaLd95vWSET8p+/DJlI3ZAZmIN5LHiyYRrF1ZequJNLKmnHUSmxKT/7q9X9NYMM5Uq+ORhXqwLDr7uReQKyV9sznU8kJkdq4QOlANuBSFY9KZ7UR+LALKGlINj4D628H6dxjCDT+7/pCcGN9BLfh/+22uAQoRiexmSm9AJDHACE4izD+ojxulGI5Ue2bPp/rRltL9Ji7hEA1Q+pTWStxU48fteTtVWRHziCz6z+4S/oaqq1GUVPy3v9TybUBF/xsv+3tUK4nbCjUuNI6Rrl9djLGdnfOzc6pBj+n066/5gxAzK2dvWd+cG/vCYZSoQqT/5ItscL7zQ1ZP3TyNq+0Y+rkQ8GfJDAx4oaxHA0Sz3tQ++9meYyYJ7JJfurLS0iaOSaUEC9tkT914VNxMuUd+oi48QQRUjCOo2+ogKmSwGNx9KzKvWx3aHHWLGJCeliIeV2rSeRcKbEkTYlDlnL+w+yE9D8nHCe7yWgcPKAWLKxvKkMtAPaRq3yqiczkD1IydCR8tf4s6uQ1Q73amWcSlxwtJkRfN66NkHegvoQkU+tsFfJiCeWzQGFYP0GivjatkK8SFdOc9j3tvX+6wSG58uyGPvJ8cCVS7aldvWHkR1KfRPD05A+R2F/g6kBHjG2Snr6j8xE/4i9M+iukeXV0x8b9lEZ18FcYY3ewS1O992f+MXDALtFAJW7BIb2xUJYH89B2WDuuGW5CzN7X/u7vcdSWlHuANBFMB8fjHkuA96Fi2+iZO+Cu/p9Z2Khsg/wla0O6tx1xhNYkXjbuweXQw0AEpMEJzGl1BYgcTTsEZObLI2jbcwHu3Mhn8SxKcEQMsz2+ys9TeRfSruFb5vDjU6V/S9rwSaZbjIPZabxbonxUPh0kDxkWvh7OhaNm1b6/nQ==
+    TWILIO_ACCOUNT_SID: AgCDpcKms9B02keJ8ok0xhh0Vc28K4NALiHDDXvDtJ/gHOxzPugPfdZaWI6jcVnUn9Jzba1jh6x8fyRlQEh9ZnJ+o1uYp19CsNxuPLZDp0VNN/UN+Qlm4l1CFtZm/3cYp7yBfoY7ty4UuE4SSuo+jxjvyG5KO1phCILwXUbnWEQzQpOxIEukqqTZhi9TMKpRrCy00Lbm4CYRS80rKo0accOqh83IgbSUGqs0djd3dx+fYiXuVqZvFvZMXoCnxdb4UU6lqoyJXsy7EKtpM9zySSVW9cdRJB9TrnrK5qAVRDecf4zzgnYFKPR31bp0tL6P9RnCJSzV5ex5EFMOJ528lFtSYWU6Pv82u/BHEiO9IwpTrlUSZu7+EANjqT+7pz7MauxEyKn4qVTqUIlnvCQmF1wtrHA2hD6JZ2zSxRlfkFk+7SNgW01B+IO75YTFtFyaNPBMqfvCzA/qUs0BSLeV7nbWL53OFk04qSfiCXmpD+GeYYHI5jJNXLd8by5dtrULfOtXIj8rBBS1dwqHYGeGtqVf+3SdN34RtxGywSdoGOnhuBpIvjP5OsiN1AXO6g0aAfcloLeyDVi5l2Q6acSEkhvu6JFVLkxUEX8BBP3z95wXUF4W7vnH7OpOKI+L/iqsf0IfZW7XTR1M3PQ7D3dbRSqnzXw5jEp9noiFu4eLe4yBZwCLpWjiJ4HHFIcbdXi9UUIWobdBxEY+qvDgLbVuWMicyNIAOkwoLpWP90rEijuptwlv
+    TWILIO_AUTH_TOKEN: AgALxVZVLhxVXBI0b+AqM5zBJKt2uP7P1Ey2RXp2b+1enhU+QCMTs962YHAtpbGWBOpBIn70+KdCG1e69nxkT7z7A1uA+13btgrqYbX1nWktm+MLIT37ido86E0CrVNaTIVbfWRe5f+TVzDDP93LORDyuA1eLLvRQQsolQb/nOrYaksebG5fth9LmRhLDXOvKb+2RcUmA1KEOX28qFBPZr5n14Y011NCzpNAJj4QJoSTU7RahP16gBlB6G40ORguXbS+rmV8ntg+i/HptakUhgvP/x+o89+VDRqzcHz3eARKast3XN9uI8Lf9PzknYolBf3VBmc9qQsv6glhT0SMadcE6qEk1Q0a0o+WLDLVUbkm9aXk3z8aZ/N7CAnWrG2emnQh+QYzB1mDsnXG9ALJA2OWoOU2Idl7MDif7paoSPu3DcP9gKtvEjzUeifThw13OHHLfVG4gZty+OarbzHbhoW/CzTlHXsN6OZPwtoJSyDGZmu78GpcQXkBkdkdz+tfsGPNYYX7ZSc2pQ6G5ryYEDca+2eNIr7TLvgXnI1Vdy8Z+t3SfLgWO3zacAmluDp+vp00PW3ZHQvZ9/zA9bxY6pa1NEZCPI56qcIJ4arbS0LPV0tskmhvS4ZFm/UZizENON+ycO/7Ren3/5VvC5QSOn9FutvwdDlxeayO7CJ2t7R+txq/mTE7QEDfMGCLd0Y/ww2khNivbVnl+CQNSqK3Y09KbVSZ6u6m+F1/beysbQRGTQ==
+    TWILIO_FROM_NUMBER: AgDJfCMLcRejwMaI/i4lOc6isPD7u/R27tfEskJsY5SpLpQBOGItcrg7rBPUfX7+qe08u7yL6mEN9DTKjQZSff0nebocgC80Iz8fblsWJH4xFq1O1Cm4fLkxyPIR79N5Utni5NStahUDiXfh0OzXGkLWqxZSj8ocIT0CjgDaj5gDCUK2ghOpISSzpNoN6MYUE2lKrM+Jzf3MaU3YSDI2R1rbgWVAOJzKSw0SfSKJRPSgmrHP3+1+AKkeE5nh15dN2FR/kWf/yQoSucjdP/oyZdCJh9jTxK/owErksyWsS5yPO/KAKhKtANUHwbGROzLD25BpM/gaYwngD67g+yj+F36qMaVjbs9Bhna/grm4Q6ygnmRS/qZu2GONG0NutRrM+rGoSXu2vdcySrIgAaaJIINK35mg7MndFPJV6Fvw+JXx/5vPXbqVq3qjeUto2BmQO74rcBu+1ax0PEBLX86LLbm/pRTZnGgkV61jnYFH13a78F60n20RKBDOg5clmFImgg3SVnkStws8Efudo2iG9ZldopVOGTt9SNtZReLsd7mKP2NQKm+37XnNz3sRf/cF9w3vPAW4p2uoOriIJk8XJfzpcWSMdF+1V8XUMATYWjxKvd1MgSrdTXumccN6tBhrUTijmceY4lofC29uhIiXtDMHvJ4O+Oou7DpmuOXrnLTHurCgdApfrgwttiLUcu7TI2vC/hcCEAsAlMuEpUk=
+  template:
+    metadata:
+      creationTimestamp: null
+      name: openclaw-secrets
+      namespace: openclaw
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-kubesecurebox-tls
+  namespace: openclaw
+spec:
+  dnsNames:
+  - openclaw.kubesecurebox.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns-cloudflare
+  secretName: openclaw-kubesecurebox-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/upstream-vhost: openclaw.kubesecurebox.com
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/part-of: kubesecurebox
+  name: openclaw-ingress
+  namespace: openclaw
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: openclaw.kubesecurebox.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: openclaw
+            port:
+              number: 18789
+        path: /api
+        pathType: Prefix
+      - backend:
+          service:
+            name: openclaw
+            port:
+              number: 18789
+        path: /healthz
+        pathType: Prefix
+      - backend:
+          service:
+            name: openclaw
+            port:
+              number: 3334
+        path: /voice
+        pathType: Prefix
+      - backend:
+          service:
+            name: openclaw
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - openclaw.kubesecurebox.com
+    secretName: openclaw-kubesecurebox-tls
