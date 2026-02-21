@@ -26,29 +26,7 @@ spec:
           hostnames:
             - browser
       initContainers:
-        - name: install-voice-call-plugin
-          image: coollabsio/openclaw:latest
-          command: ["openclaw", "plugins", "install", "@openclaw/voice-call"]
-          env:
-            - name: OPENCLAW_STATE_DIR
-              value: "/data/.openclaw"
-            # Requis pour que openclaw puisse charger la config (référence OPENAI_API_KEY)
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: openclaw-secrets
-                  key: DEEPSEEK_API_KEY
-            - name: OPENCLAW_CUSTOM_CONFIG
-              valueFrom:
-                configMapKeyRef:
-                  name: openclaw-config
-                  key: OPENCLAW_CUSTOM_CONFIG
-          volumeMounts:
-            - name: data
-              mountPath: /data
-            - name: custom-config
-              mountPath: /app/config
-              readOnly: true
+        # install-voice-call-plugin retiré tant que voice-call est disabled ; réactiver avec Twilio
         - name: copy-skills
           image: busybox:latest
           command:
