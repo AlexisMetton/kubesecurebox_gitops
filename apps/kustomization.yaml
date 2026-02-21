@@ -12,3 +12,4 @@ resources:
   - matomo
   - phpmyadmin
   - portainer
+  - openclaw
