@@ -97,12 +97,21 @@ data:
         }
       },
       "plugins": {
-        "entries": {}
+        "entries": {
+          "device-pair": {
+            "config": {
+              "publicUrl": "https://openclaw.kubesecurebox.com"
+            }
+          }
+        }
       },
       "gateway": {
         "trustedProxies": ["127.0.0.1", "::1"],
         "controlUi": {
           "allowInsecureAuth": true
+        },
+        "auth": {
+          "mode": "none"
         }
       }
     }
