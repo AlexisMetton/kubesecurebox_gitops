@@ -61,7 +61,13 @@ data:
       "channels": {
         "discord": {
           "dmPolicy": "allowlist",
-          "allowFrom": ["571976616402747402"]
+          "allowFrom": ["571976616402747402"],
+          "groupPolicy": "allowlist",
+          "guilds": {
+            "1473390625671086142": {
+              "requireMention": false
+            }
+          }
         },
         "whatsapp": {
           "dmPolicy": "allowlist",
