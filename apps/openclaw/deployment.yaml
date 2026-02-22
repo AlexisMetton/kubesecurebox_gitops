@@ -26,6 +26,13 @@ spec:
           hostnames:
             - browser
       initContainers:
+        # Supprime l'ancienne config persistée (voice-call/Twilio). À retirer après 1er démarrage réussi.
+        - name: reset-persisted-config
+          image: busybox:latest
+          command: ["sh", "-c", "rm -f /data/.openclaw/openclaw.json; exit 0"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
         - name: copy-skills
           image: busybox:latest
           command:
