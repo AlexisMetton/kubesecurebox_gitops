@@ -31,7 +31,4 @@ data:
   MEMORY_ENABLED: "true"
   # Augmente la heap Node.js pour éviter "JavaScript heap out of memory"
   NODE_OPTIONS: "--max-old-space-size=768"
-  
-  # Token Gateway OpenClaw (requis pour l'interface web)
-  # Généré avec: openssl rand -hex 32
-  OPENCLAW_GATEWAY_TOKEN: "ef10eaa8012f9a04a721f0df5ec6c22c23d745f6463b2027127a39e9c5147f48"
+  # OPENCLAW_GATEWAY_TOKEN : dans Secret openclaw-secrets (injecté via secretKeyRef)

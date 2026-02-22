@@ -2,6 +2,11 @@
 # ================================================================================
 # DeepSeek : provider "openai" avec baseUrl api.deepseek.com (texte uniquement).
 # Audio (Whisper/TTS) : provider "openai-audio" avec api.openai.com (OPENAI_AUDIO_API_KEY).
+#
+# Sécurité gateway : auth.mode "none", dangerouslyDisableDeviceAuth et allowInsecureAuth
+# sont nécessaires pour que le dashboard fonctionne derrière l'Ingress (reverse proxy).
+# Risque : quiconque a le token peut accéder au dashboard. Mitigation : garder l'accès
+# à https://openclaw.kubesecurebox.com restreint (Tailscale / VPN / réseau interne).
 apiVersion: v1
 kind: ConfigMap
 metadata:
