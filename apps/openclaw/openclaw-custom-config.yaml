@@ -60,17 +60,10 @@ data:
       },
       "channels": {
         "discord": {
-          "enabled": true,
           "dmPolicy": "allowlist",
-          "allowFrom": ["571976616402747402"],
-          "groupPolicy": "allowlist",
-          "groupAllowFrom": ["1473390625671086142"],
-          "groups": {
-            "1473390625671086142": { "requireMention": false }
-          }
+          "allowFrom": ["571976616402747402"]
         },
         "whatsapp": {
-          "enabled": true,
           "dmPolicy": "allowlist",
           "allowFrom": ["+33785601593"]
         }
