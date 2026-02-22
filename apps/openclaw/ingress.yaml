@@ -10,6 +10,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/upstream-vhost: "openclaw.kubesecurebox.com"
+    # Force le gateway à voir la connexion comme locale (évite "device identity required")
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Forwarded-For 127.0.0.1;
+      proxy_set_header X-Real-IP 127.0.0.1;
 spec:
   ingressClassName: nginx
   rules:
