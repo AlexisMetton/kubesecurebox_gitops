@@ -1,13 +1,14 @@
 # Ingress n8n - HTTPS via cert-manager
 # =====================================
-# Accessible uniquement sur le réseau Tailscale (DNS automation.kubesecurebox.com → IP Tailscale).
+# Public via Cloudflare Tunnel: le tunnel envoie du HTTP a l'ingress.
+# ssl-redirect: false evite les boucles de redirection HTTPS cote client.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: n8n-ingress
   namespace: n8n
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/upstream-vhost: "automation.kubesecurebox.com"
 spec:

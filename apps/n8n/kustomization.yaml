@@ -1,7 +1,7 @@
 # n8n - App métier (automation workflows)
 # =======================================
-# Accessible uniquement sur Tailscale : https://automation.kubesecurebox.com
-# Pour restreindre au réseau Tailscale : pointer automation.kubesecurebox.com vers l'IP Tailscale (100.x.x.x) dans Cloudflare / DNS.
+# Accessible publiquement : https://automation.kubesecurebox.com
+# Exposition via Cloudflare Tunnel, comme les autres sites publics du projet.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
