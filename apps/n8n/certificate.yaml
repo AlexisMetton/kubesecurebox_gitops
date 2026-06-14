@@ -1,4 +1,4 @@
-# Certificate Let's Encrypt pour automation.kubesecurebox.com
+# Certificate Let's Encrypt pour n8n.kubesecurebox.com
 # =============================================================
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -11,4 +11,4 @@ spec:
     name: letsencrypt-dns-cloudflare
     kind: ClusterIssuer
   dnsNames:
-    - automation.kubesecurebox.com
+    - n8n.kubesecurebox.com

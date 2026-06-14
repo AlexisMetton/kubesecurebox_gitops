@@ -1,6 +1,6 @@
 # n8n - App métier (automation workflows)
 # =======================================
-# Accessible publiquement : https://automation.kubesecurebox.com
+# Accessible publiquement : https://n8n.kubesecurebox.com
 # Exposition via Cloudflare Tunnel, comme les autres sites publics du projet.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

@@ -10,11 +10,11 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    nginx.ingress.kubernetes.io/upstream-vhost: "automation.kubesecurebox.com"
+    nginx.ingress.kubernetes.io/upstream-vhost: "n8n.kubesecurebox.com"
 spec:
   ingressClassName: nginx
   rules:
-    - host: automation.kubesecurebox.com
+    - host: n8n.kubesecurebox.com
       http:
         paths:
           - path: /
@@ -26,5 +26,5 @@ spec:
                   number: 5678
   tls:
     - hosts:
-        - automation.kubesecurebox.com
+        - n8n.kubesecurebox.com
       secretName: n8n-kubesecurebox-tls
