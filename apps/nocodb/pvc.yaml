@@ -1,0 +1,15 @@
+# PVC pour les données NocoDB (SQLite, uploads)
+# ===============================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nocodb-data
+  namespace: nocodb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  # Utilise la StorageClass par défaut (NFS provisioner si configuré)
+  # storageClassName: nfs

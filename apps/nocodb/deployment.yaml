@@ -1,0 +1,48 @@
+# Deployment NocoDB
+# ==================
+# App métier : base de données type spreadsheet. Accessible via https://sheets.kubesecurebox.com
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nocodb
+  namespace: nocodb
+  labels:
+    app: nocodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nocodb
+  template:
+    metadata:
+      labels:
+        app: nocodb
+    spec:
+      containers:
+        - name: nocodb
+          image: nocodb/nocodb:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NC_PUBLIC_URL
+              value: "https://sheets.kubesecurebox.com"
+            - name: NC_AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nocodb-auth-secrets
+                  key: jwt-secret
+          volumeMounts:
+            - name: nocodb-data
+              mountPath: /usr/app/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: nocodb-data
+          persistentVolumeClaim:
+            claimName: nocodb-data

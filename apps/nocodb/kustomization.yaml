@@ -1,0 +1,22 @@
+# nocodb - App métier (base de données type spreadsheet)
+# ========================================================
+# Accessible sur Tailscale : https://sheets.kubesecurebox.com
+# DNS Cloudflare : A record sheets -> IP Tailscale (pas de route Cloudflare Tunnel).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nocodb
+
+resources:
+  - namespace.yaml
+  - nocodb-auth-secrets-sealed.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: nocodb
+  app.kubernetes.io/part-of: kubesecurebox
