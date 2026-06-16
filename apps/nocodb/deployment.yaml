@@ -32,16 +32,36 @@ spec:
                 secretKeyRef:
                   name: nocodb-auth-secrets
                   key: jwt-secret
+            # Heap Node.js : sans cela, V8 plafonne ~256 Mo et crash au démarrage (exit 134)
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1280"
           volumeMounts:
             - name: nocodb-data
               mountPath: /usr/app/data
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            periodSeconds: 30
           resources:
             requests:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              memory: "1536Mi"
+              cpu: "1000m"
       volumes:
         - name: nocodb-data
           persistentVolumeClaim:
