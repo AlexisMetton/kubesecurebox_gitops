@@ -17,6 +17,9 @@ resources:
   - ingress.yaml
   - rbac-ingress-nginx-tls.yaml
 
-commonLabels:
-  app.kubernetes.io/name: stock-analyzer
-  app.kubernetes.io/part-of: kubesecurebox
+# Labels sur metadata uniquement — pas sur spec.selector (immuable après création)
+labels:
+  - pairs:
+      app.kubernetes.io/name: stock-analyzer
+      app.kubernetes.io/part-of: kubesecurebox
+    includeSelectors: false
