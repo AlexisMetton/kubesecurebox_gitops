@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ametton/stock-analyzer-frontend:sha-17e4892
+          image: ametton/stock-analyzer-frontend:sha-898f724
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
