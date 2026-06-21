@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ametton/stock-analyzer-backend:sha-05c3ccd
+          image: ametton/stock-analyzer-backend:sha-a1aa189
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
