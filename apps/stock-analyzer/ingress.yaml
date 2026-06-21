@@ -1,5 +1,6 @@
 # Ingress Tailscale — https://stocks.kubesecurebox.com
 # DNS Cloudflare : A record stocks → IP Tailscale Pi master (proxy désactivé)
+# ssl-redirect: false évite ERR_TOO_MANY_REDIRECTS (Tailscale termine le TLS côté client).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,7 +8,7 @@ metadata:
   namespace: stock-analyzer
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/upstream-vhost: "stocks.kubesecurebox.com"
 spec:
