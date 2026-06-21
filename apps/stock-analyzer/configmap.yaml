@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stock-analyzer-config
+  namespace: stock-analyzer
+data:
+  CLAUDE_BRIDGE_URL: "http://100.66.46.6:9999"
+  OBSIDIAN_EXPORT_PATH: "/exports"

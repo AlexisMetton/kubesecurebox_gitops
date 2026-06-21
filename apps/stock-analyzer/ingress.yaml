@@ -1,0 +1,57 @@
+# Ingress Tailscale — https://stocks.kubesecurebox.com
+# DNS Cloudflare : A record stocks → IP Tailscale Pi master (proxy désactivé)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stock-analyzer-ingress
+  namespace: stock-analyzer
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/upstream-vhost: "stocks.kubesecurebox.com"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stocks.kubesecurebox.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-analyzer-backend
+                port:
+                  number: 8000
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-analyzer-backend
+                port:
+                  number: 8000
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-analyzer-backend
+                port:
+                  number: 8000
+          - path: /login
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-analyzer-backend
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-analyzer-backend
+                port:
+                  number: 8000
+  tls:
+    - hosts:
+        - stocks.kubesecurebox.com
+      secretName: stock-analyzer-kubesecurebox-tls

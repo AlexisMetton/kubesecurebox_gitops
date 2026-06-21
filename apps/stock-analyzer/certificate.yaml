@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stock-analyzer-kubesecurebox-tls
+  namespace: stock-analyzer
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: stock-analyzer-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - stocks.kubesecurebox.com

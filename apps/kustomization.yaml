@@ -13,3 +13,4 @@ resources:
   - matomo
   - phpmyadmin
   - portainer
+  - stock-analyzer

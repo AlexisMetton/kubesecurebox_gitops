@@ -1,0 +1,22 @@
+# Stock Analyzer — Tailscale https://stocks.kubesecurebox.com
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: stock-analyzer
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres-secret-sealed.yaml
+  - backend-secret-sealed.yaml
+  - postgres-statefulset.yaml
+  - postgres-service.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+
+commonLabels:
+  app.kubernetes.io/name: stock-analyzer
+  app.kubernetes.io/part-of: kubesecurebox
