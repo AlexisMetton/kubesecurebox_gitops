@@ -38,13 +38,6 @@ spec:
                 name: stock-analyzer-backend
                 port:
                   number: 8000
-          - path: /login
-            pathType: Prefix
-            backend:
-              service:
-                name: stock-analyzer-backend
-                port:
-                  number: 8000
           - path: /
             pathType: Prefix
             backend:

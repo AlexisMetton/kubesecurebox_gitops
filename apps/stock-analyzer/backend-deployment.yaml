@@ -46,28 +46,6 @@ spec:
                 secretKeyRef:
                   name: stock-analyzer-secrets
                   key: FMP_API_KEY
-            - name: AUTH_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: stock-analyzer-secrets
-                  key: AUTH_EMAIL
-            - name: AUTH_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: stock-analyzer-secrets
-                  key: AUTH_USERNAME
-            - name: AUTH_PASSWORD_HASH
-              valueFrom:
-                secretKeyRef:
-                  name: stock-analyzer-secrets
-                  key: AUTH_PASSWORD_HASH
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: stock-analyzer-secrets
-                  key: JWT_SECRET
-            - name: AUTH_COOKIE_SECURE
-              value: "true"
           envFrom:
             - configMapRef:
                 name: stock-analyzer-config
