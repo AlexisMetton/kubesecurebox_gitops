@@ -13,6 +13,9 @@ resources:
   - postgres-service.yaml
   - backend-deployment.yaml
   - backend-service.yaml
+  - frontend-secret-sealed.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
   - certificate.yaml
   - ingress.yaml
   - rbac-ingress-nginx-tls.yaml

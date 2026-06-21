@@ -1,6 +1,7 @@
 # Ingress Tailscale — https://stocks.kubesecurebox.com
 # DNS Cloudflare : A record stocks → IP Tailscale Pi master (proxy désactivé)
 # ssl-redirect: false évite ERR_TOO_MANY_REDIRECTS (Tailscale termine le TLS côté client).
+# Ordre des paths : /api/auth avant /api (auth Next.js), puis API FastAPI, puis UI.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -17,6 +18,13 @@ spec:
     - host: stocks.kubesecurebox.com
       http:
         paths:
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-analyzer-frontend
+                port:
+                  number: 3000
           - path: /api
             pathType: Prefix
             backend:
@@ -42,9 +50,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: stock-analyzer-backend
+                name: stock-analyzer-frontend
                 port:
-                  number: 8000
+                  number: 3000
   tls:
     - hosts:
         - stocks.kubesecurebox.com

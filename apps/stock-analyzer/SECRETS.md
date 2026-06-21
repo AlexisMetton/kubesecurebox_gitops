@@ -1,5 +1,5 @@
-# Sealed Secrets — à générer AVANT le premier déploiement
-# =========================================================
+# Sealed Secrets — à générer AVANT le premier déploiement frontend
+# ================================================================
 #
 # Postgres :
 #   kubectl create secret generic postgres-credentials \
@@ -10,8 +10,16 @@
 #     --from-literal=database-url='postgresql://stockuser:CHANGEME@postgres.stock-analyzer.svc.cluster.local:5432/stockdb' \
 #     --dry-run=client -o yaml | kubeseal -o yaml > postgres-secret-sealed.yaml
 #
-# Backend (FMP uniquement — auth géré côté Next.js / Tailscale) :
+# Backend (FMP uniquement) :
 #   kubectl create secret generic stock-analyzer-secrets \
 #     --namespace=stock-analyzer \
 #     --from-literal=FMP_API_KEY='ta_cle' \
 #     --dry-run=client -o yaml | kubeseal -o yaml > backend-secret-sealed.yaml
+#
+# Frontend (auth Next.js — hash en base64, voir scripts/generate-auth-env.js) :
+#   kubectl create secret generic stock-analyzer-frontend-secrets \
+#     --namespace=stock-analyzer \
+#     --from-literal=AUTH_EMAIL='alexis.metton@gmail.com' \
+#     --from-literal=AUTH_PASSWORD_HASH_B64='JDJhJDEyJ...' \
+#     --from-literal=AUTH_SECRET='...' \
+#     --dry-run=client -o yaml | kubeseal -o yaml > frontend-secret-sealed.yaml
