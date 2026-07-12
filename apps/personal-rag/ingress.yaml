@@ -1,0 +1,30 @@
+# Ingress — uniquement /open (redirect HTTPS → obsidian:// pour liens Telegram)
+# Public : Cloudflare Tunnel → ingress-nginx → ce path (comme n8n / website)
+# Protection : Cloudflare Access sur rag.kubesecurebox.com/open (Zero Trust)
+# Ne pas créer de A record Tailscale — DNS géré par le tunnel Cloudflare
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-api-open-ingress
+  namespace: personal-rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/upstream-vhost: "rag.kubesecurebox.com"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rag.kubesecurebox.com
+      http:
+        paths:
+          - path: /open
+            pathType: Prefix
+            backend:
+              service:
+                name: rag-api
+                port:
+                  number: 8000
+  tls:
+    - hosts:
+        - rag.kubesecurebox.com
+      secretName: rag-kubesecurebox-tls

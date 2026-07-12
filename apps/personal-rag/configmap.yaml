@@ -20,6 +20,4 @@ data:
   PG_USER: "rag_user"
   RAG_API_URL: "http://rag-api:8000"
   OBSIDIAN_VAULT_NAME: "Workspace"
-  # URL HTTPS publique vers rag-api /open (Cloudflare Tunnel) — liens Telegram cliquables
-  # Ex. : https://rag.kubesecurebox.com
-  OBSIDIAN_PUBLIC_BASE: ""
+  OBSIDIAN_PUBLIC_BASE: "https://rag.kubesecurebox.com"

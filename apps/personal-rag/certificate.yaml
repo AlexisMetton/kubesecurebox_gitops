@@ -1,0 +1,15 @@
+# Certificate Let's Encrypt — rag.kubesecurebox.com (redirect Obsidian /open)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rag-kubesecurebox-tls
+  namespace: personal-rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: rag-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - rag.kubesecurebox.com

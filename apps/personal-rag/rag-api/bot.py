@@ -106,11 +106,9 @@ def _source_https_link(chemin_vault: str) -> str:
 
 
 def _format_ask_response(data: dict) -> tuple[str, str | None]:
-    """Telegram n'accepte que http(s) dans les <a href> — pas obsidian://."""
+    """Liens courts : titre cliquable → HTTPS /open → redirect obsidian://."""
     sources = data.get("sources") or []
-    use_html = bool(OBSIDIAN_PUBLIC_BASE and sources)
-
-    if use_html:
+    if OBSIDIAN_PUBLIC_BASE and sources:
         parts = [html.escape(data.get("answer", ""))]
         parts.append("\n\n<b>Sources</b> :")
         for s in sources[:5]:
@@ -128,11 +126,7 @@ def _format_ask_response(data: dict) -> tuple[str, str | None]:
     if sources:
         parts.append("\n\nSources :")
         for s in sources[:5]:
-            nom = s.get("nom") or "Note"
-            chemin = s.get("chemin") or s.get("chemin_vault") or ""
-            parts.append(f"• {nom}")
-            if chemin:
-                parts.append(f"  {_obsidian_uri(chemin)}")
+            parts.append(f"• {s.get('nom') or 'Note'}")
     parts.append(f"\n({data.get('duration_ms', 0)} ms)")
     return "\n".join(parts), None
 

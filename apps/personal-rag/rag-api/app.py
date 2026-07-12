@@ -238,6 +238,8 @@ def health():
 @app.get("/open")
 def open_obsidian_note(file: str = Query(min_length=1, max_length=500)):
     """Redirect HTTPS → obsidian:// (liens cliquables Telegram)."""
+    if ".." in file or file.startswith("/"):
+        raise HTTPException(status_code=400, detail="Chemin invalide")
     path = file if file.endswith(".md") else f"{file}.md"
     target = (
         f"obsidian://open?vault={quote(OBSIDIAN_VAULT_NAME, safe='')}"
