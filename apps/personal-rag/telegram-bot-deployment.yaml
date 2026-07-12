@@ -61,6 +61,11 @@ spec:
                 secretKeyRef:
                   name: rag-secrets
                   key: RAG_API_TOKEN
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: OPENAI_API_KEY
           volumeMounts:
             - name: code
               mountPath: /code

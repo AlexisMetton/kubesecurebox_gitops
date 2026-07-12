@@ -2,6 +2,7 @@
 # Bot Telegram — interface RAG personnel (long polling)
 
 import html
+import io
 import logging
 import os
 from urllib.parse import quote
@@ -17,6 +18,8 @@ logger = logging.getLogger("rag-telegram")
 RAG_API_URL = os.environ.get("RAG_API_URL", "http://rag-api:8000").rstrip("/")
 RAG_API_TOKEN = os.environ["RAG_API_TOKEN"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "whisper-1")
 OBSIDIAN_VAULT_NAME = os.environ.get("OBSIDIAN_VAULT_NAME", "Workspace")
 # Base HTTPS publique (ex. tunnel Cloudflare) — liens cliquables dans Telegram
 OBSIDIAN_PUBLIC_BASE = os.environ.get("OBSIDIAN_PUBLIC_BASE", "").rstrip("/")
@@ -49,7 +52,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/stats — état de l'index\n"
         "/dossiers — liste des dossiers indexés\n"
         "/help — cette aide\n\n"
-        "Tu peux aussi envoyer une question directement (sans /ask)."
+        "Tu peux aussi envoyer une question directement (sans /ask)\n"
+        "ou un message vocal 🎤."
     )
 
 
@@ -179,6 +183,63 @@ async def _run_ask(question: str) -> tuple[str, str | None]:
     return await loop.run_in_executor(None, _ask_api, question)
 
 
+def _transcribe_audio(audio_bytes: bytes, filename: str = "voice.ogg") -> str:
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY manquante pour la transcription vocale")
+    r = requests.post(
+        "https://api.openai.com/v1/audio/transcriptions",
+        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+        files={"file": (filename, io.BytesIO(audio_bytes), "application/octet-stream")},
+        data={"model": WHISPER_MODEL, "language": "fr"},
+        timeout=120,
+    )
+    r.raise_for_status()
+    return r.json().get("text", "").strip()
+
+
+async def _run_transcribe(audio_bytes: bytes, filename: str) -> str:
+    import asyncio
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _transcribe_audio, audio_bytes, filename)
+
+
+async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _allowed(update) or not update.message:
+        return
+    voice = update.message.voice
+    audio = update.message.audio
+    if not voice and not audio:
+        return
+
+    media = voice or audio
+    filename = "voice.ogg" if voice else (audio.file_name or "audio.mp3")
+
+    await update.message.chat.send_action("typing")
+    try:
+        tg_file = await context.bot.get_file(media.file_id)
+        bio = io.BytesIO()
+        await tg_file.download_to_memory(out=bio)
+        audio_bytes = bio.getvalue()
+        if len(audio_bytes) < 100:
+            await update.message.reply_text("Message vocal trop court.")
+            return
+
+        text = await _run_transcribe(audio_bytes, filename)
+        if len(text.strip()) < 3:
+            await update.message.reply_text("Je n'ai pas compris l'audio.")
+            return
+
+        await update.message.reply_text(f"🎤 {text}")
+        reply, parse_mode = await _run_ask(text)
+        await _reply_long(update.message, reply, parse_mode=parse_mode)
+    except requests.RequestException as e:
+        await update.message.reply_text(f"Erreur transcription/API : {e}")
+    except Exception as e:
+        logger.exception("Échec message vocal")
+        await update.message.reply_text(f"Erreur : {e}")
+
+
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _allowed(update) or not update.message or not update.message.text:
         return
@@ -207,6 +268,7 @@ def main():
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("dossiers", cmd_dossiers))
     app.add_handler(CommandHandler("ask", cmd_ask))
+    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, on_voice))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     logger.info("Bot Telegram démarré (long polling)")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
