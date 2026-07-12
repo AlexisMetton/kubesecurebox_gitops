@@ -12,3 +12,4 @@ resources:
 
 patches:
   - path: patch-repo-server-copyutil.yaml
+  - path: patch-applicationset-disabled.yaml

@@ -32,9 +32,24 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
 CHUNK_TARGET_CHARS = int(os.environ.get("CHUNK_TARGET_CHARS", "3000"))
 CHUNK_OVERLAP_CHARS = int(os.environ.get("CHUNK_OVERLAP_CHARS", "400"))
 EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "64"))
+CONTENT_SOURCE = os.environ.get("CONTENT_SOURCE", "obsidian")
+PARA_ROOT = os.environ.get("PARA_ROOT", "Second Cerveau")
 
-IGNORE_DIRS = {".obsidian", ".trash", ".git", ".cursor", "node_modules"}
+IGNORE_DIRS = {".obsidian", ".trash", ".git", ".cursor", "node_modules", "_Import"}
 IGNORE_PREFIXES = ("._", "~$")
+SKIP_PATH_PREFIXES = tuple(
+    p.strip().replace("\\", "/").strip("/")
+    for p in os.environ.get(
+        "SKIP_PATH_PREFIXES",
+        "Second Cerveau/0 INBOX,Second Cerveau/_Import,Second Cerveau/6 GARDEN/A traiter",
+    ).split(",")
+    if p.strip()
+)
+
+WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]")
+TAG_INLINE_RE = re.compile(r"(?:^|[\s(])#([a-zA-Z][\w/-]*)")
+H1_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
+FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 
 
 def slugifier(nom: str) -> str:
@@ -98,25 +113,155 @@ def nettoyer(texte: str) -> str:
 
 
 def parse_frontmatter(texte: str) -> tuple[dict, str]:
-    if not texte.startswith("---"):
-        return {}, texte
-    parts = texte.split("---", 2)
-    if len(parts) < 3:
+    match = FRONTMATTER_RE.match(texte)
+    if not match:
         return {}, texte
     try:
-        meta = yaml.safe_load(parts[1]) or {}
+        meta = yaml.safe_load(match.group(1))
+        if not isinstance(meta, dict):
+            return {}, texte
     except yaml.YAMLError:
-        meta = {}
-    return meta, parts[2].lstrip("\n")
+        return {}, texte
+    return meta, texte[match.end() :]
 
 
-def extraire_tags(meta: dict) -> list[str]:
-    tags = meta.get("tags", [])
-    if isinstance(tags, str):
-        return [tags]
-    if isinstance(tags, list):
-        return [str(t) for t in tags]
-    return []
+def extraire_titre(meta: dict, corps: str, nom_fichier: str) -> str:
+    titre = meta.get("title")
+    if isinstance(titre, str) and titre.strip():
+        return titre.strip()
+    match = H1_RE.search(corps)
+    if match:
+        return match.group(1).strip()
+    return nom_fichier
+
+
+def extraire_tags(meta: dict, corps: str) -> list[str]:
+    tags: list[str] = []
+    raw = meta.get("tags", [])
+    if isinstance(raw, str):
+        tags.append(raw)
+    elif isinstance(raw, list):
+        tags.extend(str(t) for t in raw)
+    for match in TAG_INLINE_RE.finditer(corps):
+        tag = match.group(1)
+        if tag not in tags:
+            tags.append(tag)
+    return tags
+
+
+def _cles_index(rel: Path) -> list[str]:
+    posix = rel.as_posix()
+    sans_ext = posix[:-3] if posix.endswith(".md") else posix
+    return [posix.lower(), sans_ext.lower(), rel.stem.lower()]
+
+
+def construire_index_liens(
+    vault: Path, notes: list[Path]
+) -> tuple[dict[str, tuple[str, str]], dict[str, list[tuple[Path, str, str]]]]:
+    lookup: dict[str, tuple[str, str]] = {}
+    par_stem: dict[str, list[tuple[Path, str, str]]] = {}
+    for path in notes:
+        rel = path.relative_to(vault)
+        source_id = rel.as_posix()
+        titre = path.stem
+        for key in _cles_index(rel):
+            lookup[key] = (titre, source_id)
+        par_stem.setdefault(path.stem.lower(), []).append((rel.parent, titre, source_id))
+    return lookup, par_stem
+
+
+def _candidats_lien(cible: str, note_rel: Path) -> list[str]:
+    cible = cible.replace("\\", "/").strip().split("#")[0].strip()
+    note_dir = note_rel.parent
+    noms = [cible]
+    if not cible.endswith(".md"):
+        noms.append(f"{cible}.md")
+    candidats = []
+    for base in (note_dir, Path(".")):
+        for nom in noms:
+            rel = (base / nom).as_posix()
+            candidats.append(rel)
+            candidats.append(rel.removesuffix(".md"))
+    return candidats
+
+
+def resoudre_wikilink(
+    cible: str,
+    note_rel: Path,
+    lookup: dict[str, tuple[str, str]],
+    par_stem: dict[str, list[tuple[Path, str, str]]],
+) -> tuple[str, str] | None:
+    for key in _candidats_lien(cible, note_rel):
+        if key.lower() in lookup:
+            return lookup[key.lower()]
+    stem = Path(cible.split("#")[0].strip()).stem.lower()
+    candidats = par_stem.get(stem, [])
+    if len(candidats) == 1:
+        return candidats[0][1], candidats[0][2]
+    if len(candidats) > 1:
+        note_dir = note_rel.parent
+        for parent, titre, source_id in candidats:
+            if parent == note_dir:
+                return titre, source_id
+        return candidats[0][1], candidats[0][2]
+    return None
+
+
+def enrichir_wikilinks(
+    texte: str,
+    note_rel: Path,
+    lookup: dict[str, tuple[str, str]],
+    par_stem: dict[str, list[tuple[Path, str, str]]],
+) -> str:
+    def remplacer(match: re.Match) -> str:
+        cible = match.group(1).strip()
+        alias = (match.group(2) or "").strip()
+        resolu = resoudre_wikilink(cible, note_rel, lookup, par_stem)
+        if resolu:
+            titre, chemin = resolu
+            label = alias or titre
+            return f"{label} (note liée : {titre}, chemin {chemin})"
+        return alias or cible
+
+    return WIKILINK_RE.sub(remplacer, texte)
+
+
+def chemin_exclu(rel: Path) -> bool:
+    posix = rel.as_posix()
+    for prefix in SKIP_PATH_PREFIXES:
+        if posix == prefix or posix.startswith(prefix + "/"):
+            return True
+    return False
+
+
+def lister_notes(vault: Path) -> tuple[list[Path], int]:
+    notes = []
+    ignores = 0
+    for path in vault.rglob("*.md"):
+        rel = path.relative_to(vault)
+        if any(part in IGNORE_DIRS for part in rel.parts):
+            ignores += 1
+            continue
+        if path.name.startswith(IGNORE_PREFIXES):
+            ignores += 1
+            continue
+        if chemin_exclu(rel):
+            ignores += 1
+            continue
+        notes.append(path)
+    return notes, ignores
+
+
+def dossier_de(chemin_relatif: Path) -> str:
+    parts = chemin_relatif.parts
+    if len(parts) <= 1:
+        return "racine"
+    if parts[0] == PARA_ROOT and len(parts) >= 2:
+        para = slugifier(parts[1])
+        if len(parts) >= 4:
+            return f"{para}-{slugifier(parts[2])}"
+        return para
+    return slugifier(parts[0])
 
 
 def embed(textes: list[str]) -> list[list[float]]:
@@ -146,45 +291,29 @@ def embed(textes: list[str]) -> list[list[float]]:
     return vecteurs
 
 
-def lister_notes(vault: Path) -> list[Path]:
-    notes = []
-    for path in vault.rglob("*.md"):
-        rel = path.relative_to(vault)
-        if any(part in IGNORE_DIRS for part in rel.parts):
-            continue
-        if path.name.startswith(IGNORE_PREFIXES):
-            continue
-        notes.append(path)
-    return notes
-
-
-def dossier_de(chemin_relatif: Path) -> str:
-    if len(chemin_relatif.parts) <= 1:
-        return "racine"
-    return slugifier(chemin_relatif.parent.parts[0])
-
-
 def sync(args):
     vault = Path(VAULT_PATH)
     if not vault.is_dir():
         sys.exit(f"Vault introuvable : {vault}")
 
     print(f"[{datetime.now(timezone.utc).isoformat()}] Scan {vault}...")
-    notes = lister_notes(vault)
-    print(f"{len(notes)} note(s) .md")
+    notes, ignores = lister_notes(vault)
+    print(f"{len(notes)} note(s) .md ({ignores} ignorée(s))")
+    if SKIP_PATH_PREFIXES:
+        print(f"Exclusions : {', '.join(SKIP_PATH_PREFIXES)}")
+
+    lookup, par_stem = construire_index_liens(vault, notes)
 
     conn = psycopg2.connect(PG_DSN)
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO sync_runs (started_at) VALUES (now()) RETURNING id"
-    )
+    cur.execute("INSERT INTO sync_runs (started_at) VALUES (now()) RETURNING id")
     run_id = cur.fetchone()[0]
     conn.commit()
 
     cur.execute("SELECT source_id, modified_time FROM documents")
     connus = {row[0]: row[1] for row in cur.fetchall()}
 
-    stats = {"nouveau": 0, "modifie": 0, "inchange": 0, "echec": 0}
+    stats = {"nouveau": 0, "modifie": 0, "inchange": 0, "echec": 0, "ignore": ignores}
     ids_vus = set()
 
     for path in notes:
@@ -203,7 +332,7 @@ def sync(args):
         nom = path.stem
         dossier = dossier_de(rel)
         est_nouveau = source_id not in connus
-        print(f"{'[+]' if est_nouveau else '[~]'} {source_id}")
+        print(f"{'[+]' if est_nouveau else '[~]'} {source_id} [{dossier}]")
 
         if args.dry_run:
             stats["nouveau" if est_nouveau else "modifie"] += 1
@@ -212,9 +341,9 @@ def sync(args):
         try:
             brut = path.read_text(encoding="utf-8", errors="replace")
             meta, corps = parse_frontmatter(brut)
-            tags = extraire_tags(meta)
-            titre = meta.get("title") or nom
-            texte = nettoyer(corps)
+            titre = extraire_titre(meta, corps, nom)
+            tags = extraire_tags(meta, corps)
+            texte = nettoyer(enrichir_wikilinks(corps, rel, lookup, par_stem))
             date_doc = meta.get("date") or deviner_date(nom)
             if isinstance(date_doc, str) and len(date_doc) >= 10:
                 date_doc = date_doc[:10]
@@ -224,16 +353,15 @@ def sync(args):
             if len(texte.strip()) < 20:
                 statut = "metadonnees_seul"
                 fiche = (
-                    f"Note Obsidian « {titre} », dossier {dossier}, "
+                    f"Note {CONTENT_SOURCE} « {titre} », dossier {dossier}, "
                     f"chemin {source_id}, modifiée le {mtime.date()}."
                 )
                 chunks = []
-                entete = f"[Note : {titre}, dossier {dossier}]\n"
                 vecteurs = embed([fiche])
             else:
                 statut = "complet"
                 fiche = (
-                    f"Note Obsidian « {titre} », dossier {dossier}, "
+                    f"Note {CONTENT_SOURCE} « {titre} », dossier {dossier}, "
                     f"chemin {source_id}."
                 )
                 chunks = chunker(texte)
@@ -299,11 +427,9 @@ def sync(args):
     if not args.dry_run:
         supprimes = [s for s in connus if s not in ids_vus]
         if supprimes:
-            cur.execute(
-                "DELETE FROM documents WHERE source_id = ANY(%s)", (supprimes,)
-            )
+            cur.execute("DELETE FROM documents WHERE source_id = ANY(%s)", (supprimes,))
             conn.commit()
-            print(f"[-] {len(supprimes)} note(s) supprimée(s) du vault")
+            print(f"[-] {len(supprimes)} note(s) retirée(s) de l'index")
 
         cur.execute(
             """UPDATE sync_runs SET finished_at = now(), stats = %s, success = %s

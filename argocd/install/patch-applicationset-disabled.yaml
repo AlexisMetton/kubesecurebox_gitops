@@ -1,0 +1,9 @@
+# ApplicationSet CRD absente du cluster — désactive le contrôleur (inutile ici).
+# Réactiver après : kubectl apply -f .../applicationset-crd.yaml puis replicas: 1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-applicationset-controller
+  namespace: argocd
+spec:
+  replicas: 0

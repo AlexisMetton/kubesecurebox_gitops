@@ -5,6 +5,9 @@ metadata:
   namespace: personal-rag
 data:
   VAULT_PATH: "/vault"
+  CONTENT_SOURCE: "obsidian"
+  PARA_ROOT: "Second Cerveau"
+  SKIP_PATH_PREFIXES: "Second Cerveau/0 INBOX,Second Cerveau/_Import,Second Cerveau/6 GARDEN/A traiter,Second Cerveau/6 GARDEN/En cours"
   EMBEDDING_MODEL: "text-embedding-3-small"
   DEEPSEEK_MODEL: "deepseek-chat"
   CHUNK_TARGET_CHARS: "3000"
