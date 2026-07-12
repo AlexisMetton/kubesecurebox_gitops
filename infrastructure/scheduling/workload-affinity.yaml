@@ -1,0 +1,33 @@
+# Affinités de scheduling réutilisables (commentaire / copier dans les manifests)
+# ==============================================================================
+# Éviter le control-plane (pi-master) pour les workloads applicatifs lourds.
+# Étaler les pods sur les nœuds quand c'est possible (3 Pi).
+#
+# Prérequis (une fois sur le cluster) :
+#   kubectl label node pi-worker-01 kubesecurebox.io/workload=apps --overwrite
+#   kubectl label node pi-worker-02 kubesecurebox.io/workload=infra --overwrite
+#
+# Exemple à coller sous spec.template.spec :
+#
+# affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoringDuringExecution:
+#       nodeSelectorTerms:
+#         - matchExpressions:
+#             - key: node-role.kubernetes.io/control-plane
+#               operator: DoesNotExist
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 80
+#         preference:
+#           matchExpressions:
+#             - key: kubesecurebox.io/workload
+#               operator: In
+#               values: ["apps"]
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 50
+#         podAffinityTerm:
+#           labelSelector:
+#             matchLabels:
+#               app.kubernetes.io/part-of: kubesecurebox
+#           topologyKey: kubernetes.io/hostname

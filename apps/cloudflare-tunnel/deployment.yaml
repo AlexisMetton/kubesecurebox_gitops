@@ -1,7 +1,8 @@
 # Deployment cloudflared - connecteur Cloudflare Tunnel
 # =====================================================
-# Établit le tunnel vers Cloudflare pour kubesecurebox.com et www.
-# Le token est fourni via le Secret cloudflare-tunnel-token (créé manuellement).
+# Tunnel sortant vers Cloudflare pour kubesecurebox.com et www.
+# Le token est fourni via TUNNEL_TOKEN (Secret) — jamais en argument CLI (invisible dans ps aux).
+# Planifié sur pi-worker-02 (nœud infra) pour ne pas surcharger le master.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,26 +20,15 @@ spec:
       labels:
         app: cloudflared
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi-worker-02
       containers:
         - name: cloudflared
-          # Image avec shell (cloudflared officiel est distroless, pas de /bin/sh)
-          image: alpine:3.19
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -e
-              apk add --no-cache wget
-              ARCH=$(uname -m)
-              case $ARCH in
-                aarch64)  F=cloudflared-linux-arm64 ;;
-                x86_64)   F=cloudflared-linux-amd64 ;;
-                armv7l)   F=cloudflared-linux-arm ;;
-                *)        F=cloudflared-linux-amd64 ;;
-              esac
-              wget -q -O /usr/local/bin/cloudflared "https://github.com/cloudflare/cloudflared/releases/latest/download/$F"
-              chmod +x /usr/local/bin/cloudflared
-              exec cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"
+          image: cloudflare/cloudflared:2024.12.2
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
           env:
             - name: TUNNEL_TOKEN
               valueFrom:

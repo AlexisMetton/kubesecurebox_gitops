@@ -21,6 +21,20 @@ spec:
         app: prometheus
     spec:
       serviceAccountName: prometheus
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoringDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: kubesecurebox.io/workload
+                    operator: In
+                    values: ["apps"]
       containers:
         - name: prometheus
           image: quay.io/prometheus/prometheus:v2.47.2

@@ -196,6 +196,15 @@ spec:
         deploymentMode: SingleBinary<->SimpleScalable
         singleBinary:
           replicas: 1
+          nodeSelector:
+            kubernetes.io/hostname: pi-worker-01
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoringDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
           persistence:
             size: 10Gi
         backend:

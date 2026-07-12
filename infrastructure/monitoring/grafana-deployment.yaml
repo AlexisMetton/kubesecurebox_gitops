@@ -19,6 +19,20 @@ spec:
       labels:
         app: grafana
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoringDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: kubesecurebox.io/workload
+                    operator: In
+                    values: ["apps"]
       containers:
         - name: grafana
           image: grafana/grafana:10.2.3
