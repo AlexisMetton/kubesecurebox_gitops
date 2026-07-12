@@ -7,7 +7,6 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import psycopg2
@@ -21,9 +20,9 @@ from pypdf import PdfReader
 from sync_obsidian import PG_DSN, chunker, deviner_date, embed, nettoyer, slugifier
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN", "")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN", "").strip()
 GDRIVE_FOLDER_ID = os.environ.get("GDRIVE_FOLDER_ID", "").strip() or "root"
 GDRIVE_MAX_FILE_BYTES = int(os.environ.get("GDRIVE_MAX_FILE_BYTES", str(15 * 1024 * 1024)))
 CONTENT_SOURCE = "google-drive"
@@ -72,12 +71,17 @@ def _credentials() -> Credentials:
         client_secret=GOOGLE_CLIENT_SECRET,
         scopes=SCOPES,
     )
-    creds.refresh(Request())
+    try:
+        creds.refresh(Request())
+    except Exception as e:
+        sys.exit(f"Échec OAuth Google Drive : {e}")
     return creds
 
 
 def _parse_modified(value: str) -> datetime:
-    dt = parsedate_to_datetime(value)
+    # Google Drive renvoie ISO 8601 : 2026-06-15T18:03:09.345Z
+    normalized = value.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(normalized)
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
@@ -353,4 +357,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not OPENAI_API_KEY:
         sys.exit("OPENAI_API_KEY manquante")
-    sync(args)
+    try:
+        sync(args)
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"ERREUR FATALE : {e}", file=sys.stderr)
+        raise
