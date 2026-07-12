@@ -87,7 +87,7 @@ async def cmd_dossiers(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Erreur API : {e}")
 
 
-async def _ask_api(question: str) -> str:
+def _ask_api(question: str) -> str:
     r = requests.post(
         f"{RAG_API_URL}/ask",
         headers={**_auth_headers(), "Content-Type": "application/json"},
@@ -101,9 +101,18 @@ async def _ask_api(question: str) -> str:
     if sources:
         parts.append("\n\nSources :")
         for s in sources[:5]:
-            parts.append(f"• {s.get('nom')} — `{s.get('chemin')}`")
+            parts.append(f"• {s.get('nom')} — {s.get('chemin')}")
     parts.append(f"\n({data.get('duration_ms', 0)} ms)")
     return "\n".join(parts)
+
+
+async def _reply_long(message, text: str):
+    """Telegram limite les messages à 4096 caractères."""
+    if len(text) <= 4096:
+        await message.reply_text(text)
+        return
+    for i in range(0, len(text), 4000):
+        await message.reply_text(text[i : i + 4000])
 
 
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -116,15 +125,18 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action("typing")
     try:
         reply = await _run_ask(question)
-        await update.message.reply_text(reply)
+        await _reply_long(update.message, reply)
     except requests.RequestException as e:
+        await update.message.reply_text(f"Erreur API : {e}")
+    except Exception as e:
+        logger.exception("Échec /ask")
         await update.message.reply_text(f"Erreur : {e}")
 
 
 async def _run_ask(question: str) -> str:
     import asyncio
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _ask_api, question)
 
 
@@ -139,8 +151,11 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action("typing")
     try:
         reply = await _run_ask(text)
-        await update.message.reply_text(reply)
+        await _reply_long(update.message, reply)
     except requests.RequestException as e:
+        await update.message.reply_text(f"Erreur API : {e}")
+    except Exception as e:
+        logger.exception("Échec question texte")
         await update.message.reply_text(f"Erreur : {e}")
 
 
