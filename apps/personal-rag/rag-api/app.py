@@ -8,12 +8,15 @@ import time
 import psycopg2
 import psycopg2.pool
 import requests
-from fastapi import Depends, FastAPI, HTTPException, Header
+from fastapi import Depends, FastAPI, HTTPException, Header, Query
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
+from urllib.parse import quote
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 DEEPSEEK_API_KEY = os.environ["DEEPSEEK_API_KEY"]
 RAG_API_TOKEN = os.environ["RAG_API_TOKEN"]
+OBSIDIAN_VAULT_NAME = os.environ.get("OBSIDIAN_VAULT_NAME", "Workspace")
 
 PG_DSN = (
     f"host={os.environ.get('PG_HOST', 'postgres')} "
@@ -230,3 +233,14 @@ def health():
         raise HTTPException(status_code=503, detail="Base indisponible") from exc
     finally:
         pool.putconn(conn)
+
+
+@app.get("/open")
+def open_obsidian_note(file: str = Query(min_length=1, max_length=500)):
+    """Redirect HTTPS → obsidian:// (liens cliquables Telegram)."""
+    path = file if file.endswith(".md") else f"{file}.md"
+    target = (
+        f"obsidian://open?vault={quote(OBSIDIAN_VAULT_NAME, safe='')}"
+        f"&file={quote(path, safe='')}"
+    )
+    return RedirectResponse(target, status_code=302)

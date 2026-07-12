@@ -18,6 +18,8 @@ RAG_API_URL = os.environ.get("RAG_API_URL", "http://rag-api:8000").rstrip("/")
 RAG_API_TOKEN = os.environ["RAG_API_TOKEN"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 OBSIDIAN_VAULT_NAME = os.environ.get("OBSIDIAN_VAULT_NAME", "Workspace")
+# Base HTTPS publique (ex. tunnel Cloudflare) — liens cliquables dans Telegram
+OBSIDIAN_PUBLIC_BASE = os.environ.get("OBSIDIAN_PUBLIC_BASE", "").rstrip("/")
 ALLOWED = {
     int(x.strip())
     for x in os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "").split(",")
@@ -92,7 +94,6 @@ async def cmd_dossiers(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _obsidian_uri(chemin_vault: str) -> str:
-    """Lien obsidian:// pour ouvrir la note dans l'app (mobile ou desktop)."""
     path = chemin_vault if chemin_vault.endswith(".md") else f"{chemin_vault}.md"
     return (
         f"obsidian://open?vault={quote(OBSIDIAN_VAULT_NAME, safe='')}"
@@ -100,24 +101,43 @@ def _obsidian_uri(chemin_vault: str) -> str:
     )
 
 
-def _format_ask_response(data: dict) -> str:
-    parts = [html.escape(data.get("answer", ""))]
+def _source_https_link(chemin_vault: str) -> str:
+    return f"{OBSIDIAN_PUBLIC_BASE}/open?file={quote(chemin_vault, safe='')}"
+
+
+def _format_ask_response(data: dict) -> tuple[str, str | None]:
+    """Telegram n'accepte que http(s) dans les <a href> — pas obsidian://."""
     sources = data.get("sources") or []
-    if sources:
+    use_html = bool(OBSIDIAN_PUBLIC_BASE and sources)
+
+    if use_html:
+        parts = [html.escape(data.get("answer", ""))]
         parts.append("\n\n<b>Sources</b> :")
         for s in sources[:5]:
             nom = html.escape(s.get("nom") or "Note")
             chemin = s.get("chemin") or s.get("chemin_vault") or ""
-            if chemin and OBSIDIAN_VAULT_NAME:
-                uri = _obsidian_uri(chemin)
-                parts.append(f'• <a href="{html.escape(uri, quote=True)}">{nom}</a>')
+            if chemin:
+                href = html.escape(_source_https_link(chemin), quote=True)
+                parts.append(f'• <a href="{href}">{nom}</a>')
             else:
-                parts.append(f"• {nom} — <code>{html.escape(chemin)}</code>")
-    parts.append(f"\n<i>({data.get('duration_ms', 0)} ms)</i>")
-    return "\n".join(parts)
+                parts.append(f"• {nom}")
+        parts.append(f"\n<i>({data.get('duration_ms', 0)} ms)</i>")
+        return "\n".join(parts), ParseMode.HTML
+
+    parts = [data.get("answer", "")]
+    if sources:
+        parts.append("\n\nSources :")
+        for s in sources[:5]:
+            nom = s.get("nom") or "Note"
+            chemin = s.get("chemin") or s.get("chemin_vault") or ""
+            parts.append(f"• {nom}")
+            if chemin:
+                parts.append(f"  {_obsidian_uri(chemin)}")
+    parts.append(f"\n({data.get('duration_ms', 0)} ms)")
+    return "\n".join(parts), None
 
 
-def _ask_api(question: str) -> str:
+def _ask_api(question: str) -> tuple[str, str | None]:
     r = requests.post(
         f"{RAG_API_URL}/ask",
         headers={**_auth_headers(), "Content-Type": "application/json"},
@@ -149,8 +169,8 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.chat.send_action("typing")
     try:
-        reply = await _run_ask(question)
-        await _reply_long(update.message, reply, parse_mode=ParseMode.HTML)
+        reply, parse_mode = await _run_ask(question)
+        await _reply_long(update.message, reply, parse_mode=parse_mode)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur API : {e}")
     except Exception as e:
@@ -158,7 +178,7 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Erreur : {e}")
 
 
-async def _run_ask(question: str) -> str:
+async def _run_ask(question: str) -> tuple[str, str | None]:
     import asyncio
 
     loop = asyncio.get_running_loop()
@@ -175,8 +195,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.chat.send_action("typing")
     try:
-        reply = await _run_ask(text)
-        await _reply_long(update.message, reply, parse_mode=ParseMode.HTML)
+        reply, parse_mode = await _run_ask(text)
+        await _reply_long(update.message, reply, parse_mode=parse_mode)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur API : {e}")
     except Exception as e:
