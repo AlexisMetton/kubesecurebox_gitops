@@ -1,0 +1,108 @@
+# API RAG FastAPI — DeepSeek + OpenAI embeddings
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-api
+  namespace: personal-rag
+  labels:
+    app: rag-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-api
+  template:
+    metadata:
+      labels:
+        app: rag-api
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoringDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: kubesecurebox.io/workload
+                    operator: In
+                    values: ["apps"]
+      initContainers:
+        - name: install-deps
+          image: python:3.12-slim
+          command:
+            - bash
+            - -c
+            - pip install --no-cache-dir -r /code/requirements.txt -t /deps
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: deps
+              mountPath: /deps
+      containers:
+        - name: rag-api
+          image: python:3.12-slim
+          command:
+            - bash
+            - -c
+            - export PYTHONPATH=/deps && cd /code && uvicorn app:app --host 0.0.0.0 --port 8000
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: personal-rag-config
+          env:
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: postgres-password
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: OPENAI_API_KEY
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: DEEPSEEK_API_KEY
+            - name: RAG_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: RAG_API_TOKEN
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: deps
+              mountPath: /deps
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - name: code
+          configMap:
+            name: personal-rag-code
+        - name: deps
+          emptyDir: {}

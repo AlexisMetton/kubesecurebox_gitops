@@ -178,6 +178,27 @@ data:
               summary: "🌡️ {{ $labels.instance }} dépasse 80 °C (surveiller refroidissement)."
             labels:
               severity: warning
+          - uid: personal-rag-ingest-failed
+            title: RAG ingest échec
+            condition: I
+            data:
+              - refId: I
+                datasourceUid: prometheus
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  expr: kube_job_status_failed{namespace="personal-rag", job_name=~"obsidian-ingest-.*"} > 0
+                  refId: I
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+            noDataState: OK
+            execErrState: Alerting
+            for: 5m
+            annotations:
+              summary: "🟠 Ingestion Obsidian RAG en échec (namespace personal-rag)."
+            labels:
+              severity: warning
           - uid: load-high
             title: Charge système élevée
             condition: H

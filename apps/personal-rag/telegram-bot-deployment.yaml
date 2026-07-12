@@ -1,0 +1,81 @@
+# Bot Telegram — long polling (pas de webhook public requis)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-bot
+  namespace: personal-rag
+  labels:
+    app: telegram-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-bot
+  template:
+    metadata:
+      labels:
+        app: telegram-bot
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoringDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      initContainers:
+        - name: install-deps
+          image: python:3.12-slim
+          command:
+            - bash
+            - -c
+            - pip install --no-cache-dir -r /code/requirements.txt -t /deps
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: deps
+              mountPath: /deps
+      containers:
+        - name: telegram-bot
+          image: python:3.12-slim
+          command:
+            - bash
+            - -c
+            - export PYTHONPATH=/deps && cd /code && python bot.py
+          envFrom:
+            - configMapRef:
+                name: personal-rag-config
+          env:
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-secrets
+                  key: TELEGRAM_BOT_TOKEN
+            - name: TELEGRAM_ALLOWED_USER_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-secrets
+                  key: TELEGRAM_ALLOWED_USER_IDS
+            - name: RAG_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: RAG_API_TOKEN
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: deps
+              mountPath: /deps
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: code
+          configMap:
+            name: personal-rag-code
+        - name: deps
+          emptyDir: {}

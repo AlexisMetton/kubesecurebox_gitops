@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: personal-rag-config
+  namespace: personal-rag
+data:
+  VAULT_PATH: "/vault"
+  EMBEDDING_MODEL: "text-embedding-3-small"
+  DEEPSEEK_MODEL: "deepseek-chat"
+  CHUNK_TARGET_CHARS: "3000"
+  CHUNK_OVERLAP_CHARS: "400"
+  EMBED_BATCH_SIZE: "64"
+  PG_HOST: "postgres"
+  PG_PORT: "5432"
+  PG_DB: "rag"
+  PG_USER: "rag_user"
+  RAG_API_URL: "http://rag-api:8000"

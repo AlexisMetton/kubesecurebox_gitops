@@ -1,0 +1,37 @@
+# Personal RAG — Kustomize
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: personal-rag
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - obsidian-vault-pv.yaml
+  - postgres-secret-sealed.yaml
+  - rag-secrets-sealed.yaml
+  - telegram-secrets-sealed.yaml
+  - postgres-statefulset.yaml
+  - postgres-service.yaml
+  - rag-api-deployment.yaml
+  - rag-api-service.yaml
+  - ingest-cronjob.yaml
+  - telegram-bot-deployment.yaml
+  - backup-cronjob.yaml
+
+configMapGenerator:
+  - name: personal-rag-schema
+    files:
+      - schema.sql
+  - name: personal-rag-code
+    files:
+      - rag-api/app.py
+      - rag-api/sync_obsidian.py
+      - rag-api/bot.py
+      - rag-api/requirements.txt
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: personal-rag
+      app.kubernetes.io/part-of: kubesecurebox
+    includeSelectors: false

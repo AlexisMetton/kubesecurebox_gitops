@@ -1,0 +1,34 @@
+# PV statique — vault Obsidian exporté depuis pi-master (NFS)
+# Prérequis : sudo bash setup-obsidian-vault.sh sur pi-master
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: obsidian-vault
+  labels:
+    app.kubernetes.io/part-of: kubesecurebox
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  mountOptions:
+    - ro
+  nfs:
+    server: 100.66.46.6
+    path: /mnt/storage/nfs-shares/obsidian-vault
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: obsidian-vault
+  namespace: personal-rag
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: ""
+  volumeName: obsidian-vault
+  resources:
+    requests:
+      storage: 50Gi

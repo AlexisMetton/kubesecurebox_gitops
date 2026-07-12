@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: personal-rag
+  labels:
+    app.kubernetes.io/name: personal-rag
+    app.kubernetes.io/part-of: kubesecurebox

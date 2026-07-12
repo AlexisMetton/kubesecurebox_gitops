@@ -6,7 +6,7 @@ kind: Kustomization
 
 resources:
   - n8n
-  - nocodb
+  # - nocodb
   - website
   - portfolio
   - cloudflare-tunnel
@@ -14,4 +14,5 @@ resources:
   - phpmyadmin
   - portainer
   - stock-analyzer
+  - personal-rag
   # - openclaw  # Désactivé — assistant Discord IA ; décommenter pour redéployer
