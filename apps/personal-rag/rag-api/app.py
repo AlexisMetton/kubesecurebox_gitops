@@ -25,6 +25,7 @@ PG_DSN = (
 
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+MOC_SEARCH_PENALTY = float(os.environ.get("MOC_SEARCH_PENALTY", "0.15"))
 
 app = FastAPI(title="RAG personnel KubeSecureBox", docs_url=None, redoc_url=None)
 pool = psycopg2.pool.ThreadedConnectionPool(minconn=1, maxconn=8, dsn=PG_DSN)
@@ -63,22 +64,26 @@ def rechercher(
     try:
         cur = conn.cursor()
         filtres = []
-        params: list = [json.dumps(vecteur)]
+        filtres_params: list = []
+        vecteur_json = json.dumps(vecteur)
         if dossier:
             filtres.append("c.dossier = %s")
-            params.append(dossier)
+            filtres_params.append(dossier)
         if tag:
             filtres.append("c.tags @> %s::jsonb")
-            params.append(json.dumps([tag]))
+            filtres_params.append(json.dumps([tag]))
         where = ("WHERE " + " AND ".join(filtres)) if filtres else ""
-        params.append(top)
+        penalite = 0.0 if tag == "moc" else MOC_SEARCH_PENALTY
         cur.execute(
             f"""SELECT c.contenu, d.nom, d.chemin_vault, d.dossier,
-                       d.date_document, c.embedding <=> %s::vector AS distance
+                       d.date_document,
+                       (c.embedding <=> %s::vector) AS distance
                 FROM chunks c JOIN documents d ON d.id = c.document_id
                 {where}
-                ORDER BY distance LIMIT %s""",
-            params,
+                ORDER BY (c.embedding <=> %s::vector) +
+                    CASE WHEN d.tags @> '["moc"]'::jsonb THEN %s ELSE 0 END
+                LIMIT %s""",
+            [vecteur_json, *filtres_params, vecteur_json, penalite, top],
         )
         return [_ligne(l) for l in cur.fetchall()]
     finally:

@@ -135,7 +135,7 @@ def extraire_titre(meta: dict, corps: str, nom_fichier: str) -> str:
     return nom_fichier
 
 
-def extraire_tags(meta: dict, corps: str) -> list[str]:
+def extraire_tags(meta: dict, corps: str, est_moc: bool = False) -> list[str]:
     tags: list[str] = []
     raw = meta.get("tags", [])
     if isinstance(raw, str):
@@ -146,7 +146,22 @@ def extraire_tags(meta: dict, corps: str) -> list[str]:
         tag = match.group(1)
         if tag not in tags:
             tags.append(tag)
+    if est_moc and "moc" not in tags:
+        tags.append("moc")
     return tags
+
+
+def note_est_moc(meta: dict, rel: Path, nom_fichier: str) -> bool:
+    doc_type = meta.get("type")
+    if isinstance(doc_type, str) and doc_type.strip().lower() == "moc":
+        return True
+    posix = rel.as_posix()
+    if "/MOC/" in posix or posix.startswith("MOC/"):
+        return True
+    stem = Path(nom_fichier).stem
+    if stem.startswith("MOC ") or stem == "MOC Portefeuille":
+        return True
+    return False
 
 
 def _cles_index(rel: Path) -> list[str]:
@@ -342,7 +357,7 @@ def sync(args):
             brut = path.read_text(encoding="utf-8", errors="replace")
             meta, corps = parse_frontmatter(brut)
             titre = extraire_titre(meta, corps, nom)
-            tags = extraire_tags(meta, corps)
+            tags = extraire_tags(meta, corps, est_moc=note_est_moc(meta, rel, nom))
             texte = nettoyer(enrichir_wikilinks(corps, rel, lookup, par_stem))
             date_doc = meta.get("date") or deviner_date(nom)
             if isinstance(date_doc, str) and len(date_doc) >= 10:
