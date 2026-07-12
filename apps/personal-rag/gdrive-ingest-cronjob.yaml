@@ -1,5 +1,4 @@
 # Ingestion Google Drive — toutes les 6 h (décalé de 30 min vs Obsidian)
-# suspend: true jusqu'à création du secret gdrive-secrets (voir gdrive-secrets.example.yaml)
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -9,7 +8,7 @@ metadata:
     app: gdrive-ingest
 spec:
   schedule: "30 */6 * * *"
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3

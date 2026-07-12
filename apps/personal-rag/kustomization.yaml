@@ -11,6 +11,7 @@ resources:
   - postgres-secret-sealed.yaml
   - rag-secrets-sealed.yaml
   - telegram-secrets-sealed.yaml
+  - gdrive-secrets-sealed.yaml
   - postgres-statefulset.yaml
   - postgres-service.yaml
   - rag-api-deployment.yaml
