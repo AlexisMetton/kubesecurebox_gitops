@@ -19,3 +19,4 @@ data:
   PG_DB: "rag"
   PG_USER: "rag_user"
   RAG_API_URL: "http://rag-api:8000"
+  OBSIDIAN_VAULT_NAME: "Workspace"

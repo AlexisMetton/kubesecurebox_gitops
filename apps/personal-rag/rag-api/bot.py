@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # Bot Telegram — interface RAG personnel (long polling)
 
+import html
 import logging
 import os
+from urllib.parse import quote
 
 import requests
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +17,7 @@ logger = logging.getLogger("rag-telegram")
 RAG_API_URL = os.environ.get("RAG_API_URL", "http://rag-api:8000").rstrip("/")
 RAG_API_TOKEN = os.environ["RAG_API_TOKEN"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+OBSIDIAN_VAULT_NAME = os.environ.get("OBSIDIAN_VAULT_NAME", "Workspace")
 ALLOWED = {
     int(x.strip())
     for x in os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "").split(",")
@@ -87,6 +91,32 @@ async def cmd_dossiers(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Erreur API : {e}")
 
 
+def _obsidian_uri(chemin_vault: str) -> str:
+    """Lien obsidian:// pour ouvrir la note dans l'app (mobile ou desktop)."""
+    path = chemin_vault if chemin_vault.endswith(".md") else f"{chemin_vault}.md"
+    return (
+        f"obsidian://open?vault={quote(OBSIDIAN_VAULT_NAME, safe='')}"
+        f"&file={quote(path, safe='')}"
+    )
+
+
+def _format_ask_response(data: dict) -> str:
+    parts = [html.escape(data.get("answer", ""))]
+    sources = data.get("sources") or []
+    if sources:
+        parts.append("\n\n<b>Sources</b> :")
+        for s in sources[:5]:
+            nom = html.escape(s.get("nom") or "Note")
+            chemin = s.get("chemin") or s.get("chemin_vault") or ""
+            if chemin and OBSIDIAN_VAULT_NAME:
+                uri = _obsidian_uri(chemin)
+                parts.append(f'• <a href="{html.escape(uri, quote=True)}">{nom}</a>')
+            else:
+                parts.append(f"• {nom} — <code>{html.escape(chemin)}</code>")
+    parts.append(f"\n<i>({data.get('duration_ms', 0)} ms)</i>")
+    return "\n".join(parts)
+
+
 def _ask_api(question: str) -> str:
     r = requests.post(
         f"{RAG_API_URL}/ask",
@@ -95,24 +125,19 @@ def _ask_api(question: str) -> str:
         timeout=120,
     )
     r.raise_for_status()
-    data = r.json()
-    parts = [data.get("answer", "")]
-    sources = data.get("sources") or []
-    if sources:
-        parts.append("\n\nSources :")
-        for s in sources[:5]:
-            parts.append(f"• {s.get('nom')} — {s.get('chemin')}")
-    parts.append(f"\n({data.get('duration_ms', 0)} ms)")
-    return "\n".join(parts)
+    return _format_ask_response(r.json())
 
 
-async def _reply_long(message, text: str):
+async def _reply_long(message, text: str, parse_mode: str | None = None):
     """Telegram limite les messages à 4096 caractères."""
+    kwargs = {"disable_web_page_preview": True}
+    if parse_mode:
+        kwargs["parse_mode"] = parse_mode
     if len(text) <= 4096:
-        await message.reply_text(text)
+        await message.reply_text(text, **kwargs)
         return
     for i in range(0, len(text), 4000):
-        await message.reply_text(text[i : i + 4000])
+        await message.reply_text(text[i : i + 4000], **kwargs)
 
 
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,7 +150,7 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action("typing")
     try:
         reply = await _run_ask(question)
-        await _reply_long(update.message, reply)
+        await _reply_long(update.message, reply, parse_mode=ParseMode.HTML)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur API : {e}")
     except Exception as e:
@@ -151,7 +176,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action("typing")
     try:
         reply = await _run_ask(text)
-        await _reply_long(update.message, reply)
+        await _reply_long(update.message, reply, parse_mode=ParseMode.HTML)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur API : {e}")
     except Exception as e:
