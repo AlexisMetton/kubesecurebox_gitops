@@ -1,0 +1,98 @@
+# Ingestion Google Drive — toutes les 6 h (décalé de 30 min vs Obsidian)
+# suspend: true jusqu'à création du secret gdrive-secrets (voir gdrive-secrets.example.yaml)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gdrive-ingest
+  namespace: personal-rag
+  labels:
+    app: gdrive-ingest
+spec:
+  schedule: "30 */6 * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 7200
+      template:
+        metadata:
+          labels:
+            app: gdrive-ingest
+        spec:
+          restartPolicy: OnFailure
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoringDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+          initContainers:
+            - name: install-deps
+              image: python:3.12-slim
+              command:
+                - bash
+                - -c
+                - pip install --no-cache-dir -r /code/requirements.txt -t /deps
+              volumeMounts:
+                - name: code
+                  mountPath: /code
+                - name: deps
+                  mountPath: /deps
+          containers:
+            - name: ingest
+              image: python:3.12-slim
+              command:
+                - bash
+                - -c
+                - export PYTHONPATH=/deps && cd /code && python sync_gdrive.py
+              envFrom:
+                - configMapRef:
+                    name: personal-rag-config
+              env:
+                - name: PG_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: postgres-password
+                - name: OPENAI_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-secrets
+                      key: OPENAI_API_KEY
+                - name: GOOGLE_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: gdrive-secrets
+                      key: GOOGLE_CLIENT_ID
+                - name: GOOGLE_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: gdrive-secrets
+                      key: GOOGLE_CLIENT_SECRET
+                - name: GOOGLE_REFRESH_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: gdrive-secrets
+                      key: GOOGLE_REFRESH_TOKEN
+              volumeMounts:
+                - name: code
+                  mountPath: /code
+                - name: deps
+                  mountPath: /deps
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "200m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "1000m"
+          volumes:
+            - name: code
+              configMap:
+                name: personal-rag-code
+            - name: deps
+              emptyDir: {}

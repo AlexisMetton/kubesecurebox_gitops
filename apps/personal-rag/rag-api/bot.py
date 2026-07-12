@@ -106,6 +106,8 @@ def _obsidian_uri(chemin_vault: str) -> str:
 
 
 def _source_https_link(chemin_vault: str) -> str:
+    if chemin_vault.startswith("http://") or chemin_vault.startswith("https://"):
+        return chemin_vault
     return f"{OBSIDIAN_PUBLIC_BASE}/open?file={quote(chemin_vault, safe='')}"
 
 

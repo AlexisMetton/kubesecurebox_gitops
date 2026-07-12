@@ -21,3 +21,7 @@ data:
   RAG_API_URL: "http://rag-api:8000"
   OBSIDIAN_VAULT_NAME: "Workspace"
   OBSIDIAN_PUBLIC_BASE: "https://rag.kubesecurebox.com"
+  # Google Drive — dossier racine à indexer (vide = tout le Drive)
+  GDRIVE_FOLDER_ID: ""
+  GDRIVE_MAX_FILE_BYTES: "15728640"
+  GDRIVE_SKIP_MIME_PREFIXES: "image/,video/,audio/,application/zip,application/x-rar"

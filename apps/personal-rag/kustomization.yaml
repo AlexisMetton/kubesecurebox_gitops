@@ -18,6 +18,7 @@ resources:
   - certificate.yaml
   - ingress.yaml
   - ingest-cronjob.yaml
+  - gdrive-ingest-cronjob.yaml
   - telegram-bot-deployment.yaml
   - backup-cronjob.yaml
 
@@ -29,6 +30,8 @@ configMapGenerator:
     files:
       - rag-api/app.py
       - rag-api/sync_obsidian.py
+      - rag-api/sync_gdrive.py
+      - rag-api/gdrive_auth.py
       - rag-api/bot.py
       - rag-api/requirements.txt
 

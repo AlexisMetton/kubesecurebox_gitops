@@ -4,3 +4,7 @@ psycopg2-binary
 requests
 python-telegram-bot==21.6
 PyYAML
+google-api-python-client
+google-auth
+google-auth-oauthlib
+pypdf

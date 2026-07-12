@@ -440,7 +440,7 @@ def sync(args):
             stats["echec"] += 1
 
     if not args.dry_run:
-        supprimes = [s for s in connus if s not in ids_vus]
+        supprimes = [s for s in connus if s not in ids_vus and not s.startswith("gdrive:")]
         if supprimes:
             cur.execute("DELETE FROM documents WHERE source_id = ANY(%s)", (supprimes,))
             conn.commit()
