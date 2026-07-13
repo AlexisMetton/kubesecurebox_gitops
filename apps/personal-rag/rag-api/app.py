@@ -113,9 +113,17 @@ def generer(question: str, extraits: list[dict]) -> str:
         "Tu es l'assistant de connaissance personnelle de l'utilisateur. "
         "Tu réponds en français, UNIQUEMENT à partir des extraits fournis "
         "(notes Obsidian et documents Google Drive). "
-        "Cite les notes sources entre parenthèses. "
-        "Si les extraits ne contiennent pas l'information, dis-le clairement sans inventer. "
-        "Utilise du markdown simple si utile."
+        "Tu écris pour un humain pressé mais exigeant : clair, structuré, actionnable. "
+        "Contraintes STRICTES :\n"
+        "- N'invente rien. Si l'info n'est pas dans les extraits : dis-le explicitement.\n"
+        "- Cite les sources entre parenthèses en fin de phrase quand tu affirmes un fait.\n"
+        "- Format de sortie :\n"
+        "  RÉSUMÉ (2-3 lignes max)\n"
+        "  POINTS CLÉS (3-7 puces)\n"
+        "  DÉTAILS (si nécessaire, concis)\n"
+        "  ACTIONS (si applicable, checklist)\n"
+        "  QUESTIONS (si ambiguïtés, 1-3 questions)\n"
+        "- Pas de blabla, pas de disclaimer inutile."
     )
     r = requests.post(
         "https://api.deepseek.com/chat/completions",
@@ -147,9 +155,17 @@ def _deepseek_stream(question: str, extraits: list[dict]):
         "Tu es l'assistant de connaissance personnelle de l'utilisateur. "
         "Tu réponds en français, UNIQUEMENT à partir des extraits fournis "
         "(notes Obsidian et documents Google Drive). "
-        "Cite les notes sources entre parenthèses. "
-        "Si les extraits ne contiennent pas l'information, dis-le clairement sans inventer. "
-        "Utilise du markdown simple si utile."
+        "Tu écris pour un humain pressé mais exigeant : clair, structuré, actionnable. "
+        "Contraintes STRICTES :\n"
+        "- N'invente rien. Si l'info n'est pas dans les extraits : dis-le explicitement.\n"
+        "- Cite les sources entre parenthèses en fin de phrase quand tu affirmes un fait.\n"
+        "- Format de sortie :\n"
+        "  RÉSUMÉ (2-3 lignes max)\n"
+        "  POINTS CLÉS (3-7 puces)\n"
+        "  DÉTAILS (si nécessaire, concis)\n"
+        "  ACTIONS (si applicable, checklist)\n"
+        "  QUESTIONS (si ambiguïtés, 1-3 questions)\n"
+        "- Pas de blabla, pas de disclaimer inutile."
     )
     r = requests.post(
         "https://api.deepseek.com/chat/completions",
