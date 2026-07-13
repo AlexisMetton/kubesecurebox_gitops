@@ -12,6 +12,7 @@ from urllib.parse import quote
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
+from telegram.error import BadRequest
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -40,6 +41,18 @@ ALLOWED = {
 }
 
 _SOURCE_CACHE: dict[str, dict] = {}
+
+async def _safe_edit(msg, text: str, **kwargs):
+    """Évite l'erreur Telegram 'Message is not modified' (edits identiques)."""
+    try:
+        current = getattr(msg, "text", None)
+        if current == text and not kwargs:
+            return
+        await msg.edit_text(text, **kwargs)
+    except BadRequest as e:
+        if "Message is not modified" in str(e):
+            return
+        raise
 
 
 def _auth_headers() -> dict:
@@ -221,7 +234,7 @@ async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, que
                 except Exception:
                     d = {}
                 label = d.get("label") or "…"
-                await msg.edit_text(label)
+                await _safe_edit(msg, label)
                 continue
 
             if ev == "delta":
@@ -238,7 +251,7 @@ async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, que
                 last_edit = now
                 # Telegram limite; on affiche une fenêtre de fin de message en live
                 live = buffer[-3500:] if len(buffer) > 3500 else buffer
-                await msg.edit_text(live or "…")
+                await _safe_edit(msg, live or "…")
                 continue
 
             if ev == "done":
@@ -251,7 +264,7 @@ async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, que
                 break
 
             if ev == "error":
-                await msg.edit_text("Erreur : service IA indisponible.")
+                await _safe_edit(msg, "Erreur : service IA indisponible.")
                 return
 
         if not final_data:
@@ -272,15 +285,15 @@ async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, que
             kwargs["reply_markup"] = kb
         # Edit final (si > 4096, fallback en messages multiples)
         if len(reply) <= 4096:
-            await msg.edit_text(reply, **kwargs)
+            await _safe_edit(msg, reply, **kwargs)
         else:
-            await msg.edit_text("Réponse trop longue, je l’envoie en plusieurs messages…")
+            await _safe_edit(msg, "Réponse trop longue, je l’envoie en plusieurs messages…")
             await _reply_long(update.message, reply, parse_mode=parse_mode)
     except requests.RequestException as e:
-        await msg.edit_text(f"Erreur API : {e}")
+        await _safe_edit(msg, f"Erreur API : {e}")
     except Exception as e:
         logger.exception("Échec streaming")
-        await msg.edit_text(f"Erreur : {e}")
+        await _safe_edit(msg, f"Erreur : {e}")
 
 
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
