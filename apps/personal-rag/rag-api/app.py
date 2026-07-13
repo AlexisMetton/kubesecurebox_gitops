@@ -9,7 +9,7 @@ import psycopg2
 import psycopg2.pool
 import requests
 from fastapi import Depends, FastAPI, HTTPException, Header, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from urllib.parse import quote
 
@@ -135,6 +135,124 @@ def generer(question: str, extraits: list[dict]) -> str:
     )
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
+
+
+def _deepseek_stream(question: str, extraits: list[dict]):
+    """Stream DeepSeek (format SSE OpenAI-like) et yield des deltas texte."""
+    contexte = "\n\n---\n\n".join(
+        f"[Source {i + 1} : {e['nom']} ({e['chemin_vault']})]\n{e['contenu']}"
+        for i, e in enumerate(extraits)
+    )
+    system = (
+        "Tu es l'assistant de connaissance personnelle de l'utilisateur. "
+        "Tu réponds en français, UNIQUEMENT à partir des extraits fournis "
+        "(notes Obsidian et documents Google Drive). "
+        "Cite les notes sources entre parenthèses. "
+        "Si les extraits ne contiennent pas l'information, dis-le clairement sans inventer. "
+        "Utilise du markdown simple si utile."
+    )
+    r = requests.post(
+        "https://api.deepseek.com/chat/completions",
+        headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+        json={
+            "model": DEEPSEEK_MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {
+                    "role": "user",
+                    "content": f"Extraits :\n\n{contexte}\n\nQuestion : {question}",
+                },
+            ],
+            "temperature": 0.2,
+            "stream": True,
+        },
+        timeout=90,
+        stream=True,
+    )
+    r.raise_for_status()
+
+    for raw in r.iter_lines(decode_unicode=True):
+        if not raw:
+            continue
+        line = raw.strip()
+        if not line.startswith("data:"):
+            continue
+        data = line[5:].strip()
+        if data == "[DONE]":
+            break
+        try:
+            payload = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        choice = (payload.get("choices") or [{}])[0]
+        delta = choice.get("delta") or {}
+        text = delta.get("content") or ""
+        if text:
+            yield text
+
+
+def _to_sse(event: str, data: dict) -> bytes:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode(
+        "utf-8"
+    )
+
+
+@app.post("/ask_sse", dependencies=[Depends(verifier_token)])
+def ask_sse(req: AskRequest):
+    debut = time.time()
+
+    def gen():
+        try:
+            yield _to_sse("status", {"stage": "search", "label": "🔎 Recherche…"})
+            vecteur = embed_question(req.question)
+            extraits = rechercher(vecteur, req.dossier, req.tag, req.top)
+            if not extraits:
+                yield _to_sse(
+                    "done",
+                    {
+                        "answer": "Aucune note trouvée pour cette recherche.",
+                        "sources": [],
+                        "duration_ms": int((time.time() - debut) * 1000),
+                    },
+                )
+                return
+
+            yield _to_sse("status", {"stage": "generate", "label": "🧠 Génération…"})
+            answer_parts: list[str] = []
+            for delta in _deepseek_stream(req.question, extraits):
+                answer_parts.append(delta)
+                yield _to_sse("delta", {"text": delta})
+            answer = "".join(answer_parts).strip()
+
+            vus, sources = set(), []
+            for e in extraits:
+                if e["chemin_vault"] not in vus:
+                    vus.add(e["chemin_vault"])
+                    sources.append(
+                        {
+                            "nom": e["nom"],
+                            "chemin": e["chemin_vault"],
+                            "dossier": e["dossier"],
+                            "date_document": e["date_document"],
+                            "extrait": e["contenu"][:200],
+                        }
+                    )
+
+            yield _to_sse(
+                "done",
+                {
+                    "answer": answer or "(réponse vide)",
+                    "sources": sources[:15],
+                    "duration_ms": int((time.time() - debut) * 1000),
+                },
+            )
+        except requests.RequestException:
+            yield _to_sse(
+                "error",
+                {"message": "Service IA momentanément indisponible"},
+            )
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 @app.post("/ask", dependencies=[Depends(verifier_token)])

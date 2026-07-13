@@ -5,12 +5,21 @@ import html
 import io
 import logging
 import os
+import time
+import uuid
 from urllib.parse import quote
 
 import requests
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rag-telegram")
@@ -23,11 +32,14 @@ WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "whisper-1")
 OBSIDIAN_VAULT_NAME = os.environ.get("OBSIDIAN_VAULT_NAME", "Workspace")
 # Base HTTPS publique (ex. tunnel Cloudflare) — liens cliquables dans Telegram
 OBSIDIAN_PUBLIC_BASE = os.environ.get("OBSIDIAN_PUBLIC_BASE", "").rstrip("/")
+TELEGRAM_STREAM = os.environ.get("TELEGRAM_STREAM", "1").strip() not in ("0", "false", "no")
 ALLOWED = {
     int(x.strip())
     for x in os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "").split(",")
     if x.strip().isdigit()
 }
+
+_SOURCE_CACHE: dict[str, dict] = {}
 
 
 def _auth_headers() -> dict:
@@ -148,6 +160,154 @@ def _ask_api(question: str) -> tuple[str, str | None]:
     return _format_ask_response(r.json())
 
 
+def _sse_iter(question: str):
+    """Itère sur les events SSE renvoyés par /ask_sse."""
+    r = requests.post(
+        f"{RAG_API_URL}/ask_sse",
+        headers={**_auth_headers(), "Content-Type": "application/json"},
+        json={"question": question, "top": 8},
+        stream=True,
+        timeout=300,
+    )
+    r.raise_for_status()
+    event = None
+    data_lines: list[str] = []
+    for raw in r.iter_lines(decode_unicode=True):
+        if raw is None:
+            continue
+        line = raw.rstrip("\n")
+        if not line:
+            if event and data_lines:
+                yield event, "\n".join(data_lines)
+            event, data_lines = None, []
+            continue
+        if line.startswith("event:"):
+            event = line.split(":", 1)[1].strip()
+            continue
+        if line.startswith("data:"):
+            data_lines.append(line.split(":", 1)[1].strip())
+            continue
+
+
+def _keyboard_for_sources(cache_id: str, sources: list[dict]) -> InlineKeyboardMarkup | None:
+    if not sources:
+        return None
+    buttons: list[list[InlineKeyboardButton]] = []
+    row: list[InlineKeyboardButton] = []
+    for i, s in enumerate(sources[:3], start=1):
+        chemin = s.get("chemin") or s.get("chemin_vault") or ""
+        if chemin:
+            row.append(InlineKeyboardButton(f"Ouvrir {i}", url=_source_https_link(chemin)))
+    if row:
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("Sources", callback_data=f"src:{cache_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, question: str):
+    """Envoie/édite un message pour simuler un streaming token-par-token."""
+    msg = await update.message.reply_text("🔎 Recherche…")
+    last_edit = 0.0
+    buffer = ""
+    final_data: dict | None = None
+
+    try:
+        for ev, payload in _sse_iter(question):
+            if ev == "status":
+                try:
+                    import json
+
+                    d = json.loads(payload)
+                except Exception:
+                    d = {}
+                label = d.get("label") or "…"
+                await msg.edit_text(label)
+                continue
+
+            if ev == "delta":
+                try:
+                    import json
+
+                    d = json.loads(payload)
+                except Exception:
+                    d = {}
+                buffer += d.get("text") or ""
+                now = time.monotonic()
+                if now - last_edit < 0.8:
+                    continue
+                last_edit = now
+                # Telegram limite; on affiche une fenêtre de fin de message en live
+                live = buffer[-3500:] if len(buffer) > 3500 else buffer
+                await msg.edit_text(live or "…")
+                continue
+
+            if ev == "done":
+                try:
+                    import json
+
+                    final_data = json.loads(payload)
+                except Exception:
+                    final_data = {"answer": buffer, "sources": [], "duration_ms": 0}
+                break
+
+            if ev == "error":
+                await msg.edit_text("Erreur : service IA indisponible.")
+                return
+
+        if not final_data:
+            final_data = {"answer": buffer, "sources": [], "duration_ms": 0}
+
+        cache_id = uuid.uuid4().hex[:10]
+        _SOURCE_CACHE[cache_id] = {
+            "ts": time.time(),
+            "sources": final_data.get("sources") or [],
+        }
+
+        reply, parse_mode = _format_ask_response(final_data)
+        kb = _keyboard_for_sources(cache_id, final_data.get("sources") or [])
+        kwargs = {"disable_web_page_preview": True}
+        if parse_mode:
+            kwargs["parse_mode"] = parse_mode
+        if kb:
+            kwargs["reply_markup"] = kb
+        # Edit final (si > 4096, fallback en messages multiples)
+        if len(reply) <= 4096:
+            await msg.edit_text(reply, **kwargs)
+        else:
+            await msg.edit_text("Réponse trop longue, je l’envoie en plusieurs messages…")
+            await _reply_long(update.message, reply, parse_mode=parse_mode)
+    except requests.RequestException as e:
+        await msg.edit_text(f"Erreur API : {e}")
+    except Exception as e:
+        logger.exception("Échec streaming")
+        await msg.edit_text(f"Erreur : {e}")
+
+
+async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    data = query.data or ""
+    if not data.startswith("src:"):
+        return
+    cache_id = data.split(":", 1)[1]
+    entry = _SOURCE_CACHE.get(cache_id)
+    if not entry:
+        await query.message.reply_text("Sources expirées.")
+        return
+    sources = entry.get("sources") or []
+    if not sources:
+        await query.message.reply_text("Aucune source.")
+        return
+    lines = ["Sources :"]
+    for s in sources[:15]:
+        nom = s.get("nom") or "Document"
+        chemin = s.get("chemin") or s.get("chemin_vault") or ""
+        lines.append(f"- {nom} — {chemin}")
+    await query.message.reply_text("\n".join(lines), disable_web_page_preview=True)
+
+
 async def _reply_long(message, text: str, parse_mode: str | None = None):
     """Telegram limite les messages à 4096 caractères."""
     kwargs = {"disable_web_page_preview": True}
@@ -167,10 +327,13 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(question) < 3:
         await update.message.reply_text("Usage : /ask ta question")
         return
-    await update.message.chat.send_action("typing")
     try:
-        reply, parse_mode = await _run_ask(question)
-        await _reply_long(update.message, reply, parse_mode=parse_mode)
+        if TELEGRAM_STREAM:
+            await _stream_answer(update, context, question)
+        else:
+            await update.message.chat.send_action("typing")
+            reply, parse_mode = await _run_ask(question)
+            await _reply_long(update.message, reply, parse_mode=parse_mode)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur API : {e}")
     except Exception as e:
@@ -233,8 +396,11 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         await update.message.reply_text(f"🎤 {text}")
-        reply, parse_mode = await _run_ask(text)
-        await _reply_long(update.message, reply, parse_mode=parse_mode)
+        if TELEGRAM_STREAM:
+            await _stream_answer(update, context, text)
+        else:
+            reply, parse_mode = await _run_ask(text)
+            await _reply_long(update.message, reply, parse_mode=parse_mode)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur transcription/API : {e}")
     except Exception as e:
@@ -250,10 +416,13 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if len(text) < 3:
         return
-    await update.message.chat.send_action("typing")
     try:
-        reply, parse_mode = await _run_ask(text)
-        await _reply_long(update.message, reply, parse_mode=parse_mode)
+        if TELEGRAM_STREAM:
+            await _stream_answer(update, context, text)
+        else:
+            await update.message.chat.send_action("typing")
+            reply, parse_mode = await _run_ask(text)
+            await _reply_long(update.message, reply, parse_mode=parse_mode)
     except requests.RequestException as e:
         await update.message.reply_text(f"Erreur API : {e}")
     except Exception as e:
@@ -270,6 +439,7 @@ def main():
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("dossiers", cmd_dossiers))
     app.add_handler(CommandHandler("ask", cmd_ask))
+    app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, on_voice))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     logger.info("Bot Telegram démarré (long polling)")
