@@ -141,23 +141,10 @@ def _format_ask_response(data: dict) -> tuple[str, str | None]:
     sources = data.get("sources") or []
     if OBSIDIAN_PUBLIC_BASE and sources:
         parts = [html.escape(data.get("answer", ""))]
-        parts.append("\n\n<b>Sources</b> :")
-        for s in sources[:5]:
-            nom = html.escape(s.get("nom") or "Note")
-            chemin = s.get("chemin") or s.get("chemin_vault") or ""
-            if chemin:
-                href = html.escape(_source_https_link(chemin), quote=True)
-                parts.append(f'• <a href="{href}">{nom}</a>')
-            else:
-                parts.append(f"• {nom}")
         parts.append(f"\n<i>({data.get('duration_ms', 0)} ms)</i>")
         return "\n".join(parts), ParseMode.HTML
 
     parts = [data.get("answer", "")]
-    if sources:
-        parts.append("\n\nSources :")
-        for s in sources[:5]:
-            parts.append(f"• {s.get('nom') or 'Note'}")
     parts.append(f"\n({data.get('duration_ms', 0)} ms)")
     return "\n".join(parts), None
 
@@ -213,8 +200,23 @@ def _keyboard_for_sources(cache_id: str, sources: list[dict]) -> InlineKeyboardM
             row.append(InlineKeyboardButton(f"Ouvrir {i}", url=_source_https_link(chemin)))
     if row:
         buttons.append(row)
-    buttons.append([InlineKeyboardButton("Sources", callback_data=f"src:{cache_id}")])
+    buttons.append([InlineKeyboardButton("Sources", callback_data=f"src:{cache_id}:show")])
     return InlineKeyboardMarkup(buttons)
+
+
+def _render_sources_html(sources: list[dict], limit: int = 15) -> str:
+    if not sources:
+        return "<i>Aucune source.</i>"
+    parts = ["<b>Sources</b> :"]
+    for s in sources[:limit]:
+        nom = html.escape(s.get("nom") or "Document")
+        chemin = s.get("chemin") or s.get("chemin_vault") or ""
+        if chemin:
+            href = html.escape(_source_https_link(chemin), quote=True)
+            parts.append(f'• <a href="{href}">{nom}</a>')
+        else:
+            parts.append(f"• {nom}")
+    return "\n".join(parts)
 
 
 async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, question: str):
@@ -274,9 +276,15 @@ async def _stream_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, que
         _SOURCE_CACHE[cache_id] = {
             "ts": time.time(),
             "sources": final_data.get("sources") or [],
+            "shown": False,
+            "sources_msg_id": None,
+            "answer_text": None,
+            "parse_mode": None,
         }
 
         reply, parse_mode = _format_ask_response(final_data)
+        _SOURCE_CACHE[cache_id]["answer_text"] = reply
+        _SOURCE_CACHE[cache_id]["parse_mode"] = parse_mode
         kb = _keyboard_for_sources(cache_id, final_data.get("sources") or [])
         kwargs = {"disable_web_page_preview": True}
         if parse_mode:
@@ -304,7 +312,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data or ""
     if not data.startswith("src:"):
         return
-    cache_id = data.split(":", 1)[1]
+    parts = data.split(":")
+    if len(parts) < 3:
+        return
+    cache_id = parts[1]
+    action = parts[2]
     entry = _SOURCE_CACHE.get(cache_id)
     if not entry:
         await query.message.reply_text("Sources expirées.")
@@ -313,12 +325,74 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not sources:
         await query.message.reply_text("Aucune source.")
         return
-    lines = ["Sources :"]
-    for s in sources[:15]:
-        nom = s.get("nom") or "Document"
-        chemin = s.get("chemin") or s.get("chemin_vault") or ""
-        lines.append(f"- {nom} — {chemin}")
-    await query.message.reply_text("\n".join(lines), disable_web_page_preview=True)
+
+    # Toggle afficher/masquer sans spammer des messages
+    shown = bool(entry.get("shown"))
+    want_show = action == "show"
+    want_hide = action == "hide"
+
+    # Si on veut montrer et que c'est déjà montré, ne rien faire
+    if want_show and shown:
+        return
+    if want_hide and not shown:
+        return
+
+    answer_text = entry.get("answer_text") or (query.message.text or "")
+    parse_mode = entry.get("parse_mode")
+    sources_html = _render_sources_html(sources)
+
+    # Stratégie 1 (préférée) : spoiler dans le même message (éditable, "refermable")
+    if parse_mode == ParseMode.HTML:
+        if want_show:
+            combined = f"{answer_text}\n\n<tg-spoiler>\n{sources_html}\n</tg-spoiler>"
+        else:
+            combined = str(answer_text)
+
+        kb = _keyboard_for_sources(cache_id, sources)
+        if kb:
+            # Change le callback selon l'état
+            kb.inline_keyboard[-1][0].callback_data = f"src:{cache_id}:{'hide' if want_show else 'show'}"
+            kb.inline_keyboard[-1][0].text = "Masquer sources" if want_show else "Sources"
+
+        # Si trop long, fallback message séparé
+        if len(combined) <= 4096:
+            await _safe_edit(
+                query.message,
+                combined,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+                reply_markup=kb,
+            )
+            entry["shown"] = want_show
+            # Si on masque, supprime un éventuel message séparé précédent
+            if want_hide and entry.get("sources_msg_id"):
+                try:
+                    await context.bot.delete_message(
+                        chat_id=query.message.chat_id, message_id=entry["sources_msg_id"]
+                    )
+                except Exception:
+                    pass
+                entry["sources_msg_id"] = None
+            return
+
+    # Stratégie 2 : message séparé "refermable" via delete
+    if want_show:
+        txt = "Sources :\n" + "\n".join(
+            f"- {s.get('nom') or 'Document'} — {s.get('chemin') or s.get('chemin_vault') or ''}"
+            for s in sources[:15]
+        )
+        sent = await query.message.reply_text(txt, disable_web_page_preview=True)
+        entry["sources_msg_id"] = sent.message_id
+        entry["shown"] = True
+    else:
+        mid = entry.get("sources_msg_id")
+        if mid:
+            try:
+                await context.bot.delete_message(chat_id=query.message.chat_id, message_id=mid)
+            except Exception:
+                pass
+        entry["sources_msg_id"] = None
+        entry["shown"] = False
 
 
 async def _reply_long(message, text: str, parse_mode: str | None = None):
