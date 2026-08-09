@@ -48,7 +48,7 @@ spec:
               value: "https"
             - name: N8N_EDITOR_BASE_URL
               value: "https://n8n.kubesecurebox.com"
-            - name: WEBHOOK_URL
+            - name: N8N_WEBHOOK_URL
               value: "https://n8n.kubesecurebox.com/"
             - name: N8N_PROXY_HOPS
               value: "1"
@@ -56,6 +56,9 @@ spec:
               value: "true"
             - name: N8N_ALLOWED_ORIGINS
               value: "https://n8n.kubesecurebox.com"
+            # Heap Node aligné sur la limite mémoire (évite OOM sous charge / GC)
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1280"
             - name: N8N_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -66,11 +69,11 @@ spec:
               mountPath: /home/node/.n8n
           resources:
             requests:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              memory: "1536Mi"
+              cpu: "1000m"
       volumes:
         - name: n8n-data
           persistentVolumeClaim:
