@@ -5,7 +5,8 @@
 https://mcp.kubesecurebox.com/admin
 
 1. Colle un token avec scope **admin** (bootstrap ou token créé pour ça)
-2. Gère tokens / vois skills / journal d’activité
+2. Gère tokens (créer, scopes, révoquer) / vois skills / journal d’activité
+   — tu peux changer les scopes d’un token existant sans régénérer le secret
 
 ## Claude Desktop (stdio proxy)
 
@@ -33,6 +34,7 @@ Prérequis : `python -m pip install --user mcp requests`
 | `GET /health` | health |
 | `GET /admin` | UI |
 | `POST/GET/DELETE /admin/tokens` | tokens (admin) |
+| `PATCH /admin/tokens/{id}` | mettre à jour les scopes (secret inchangé) |
 | `/v1/rag/*` | RAG |
 | `/v1/skills` | skills |
 | `/v1/activity` | journal |

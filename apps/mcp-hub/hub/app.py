@@ -314,6 +314,28 @@ def admin_revoke_token(
     return {"revoked": True, "id": token_id}
 
 
+class TokenScopesUpdate(BaseModel):
+    scopes: list[str] = Field(min_length=1)
+
+
+@app.patch("/admin/tokens/{token_id}")
+def admin_update_token_scopes(
+    token_id: int,
+    body: TokenScopesUpdate,
+    principal: dict = Depends(require_scope("admin")),
+):
+    scopes = [s for s in body.scopes if s in db.ALLOWED_SCOPES]
+    if not scopes:
+        raise HTTPException(status_code=400, detail="Aucun scope valide")
+    t0 = time.time()
+    meta = db.update_token_scopes(token_id, scopes)
+    if not meta:
+        _audit(principal, "admin_update_scopes", False, f"id={token_id}", t0)
+        raise HTTPException(status_code=404, detail="Token introuvable ou révoqué")
+    _audit(principal, "admin_update_scopes", True, f"id={token_id}:{scopes}", t0)
+    return {"token": meta}
+
+
 class RagQuery(BaseModel):
     question: str = Field(min_length=3, max_length=4000)
     dossier: str | None = None

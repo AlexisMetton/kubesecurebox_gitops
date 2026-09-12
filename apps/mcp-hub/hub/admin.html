@@ -87,7 +87,9 @@
     button.primary:hover { background: #4bb892; }
     button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
     button.danger { background: transparent; color: var(--danger); border: 1px solid #5a3030; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
     .scopes { display: flex; flex-wrap: wrap; gap: 0.65rem 1rem; margin: 0.5rem 0 0.85rem; }
+    .scopes.compact { margin: 0; gap: 0.4rem 0.75rem; }
     .scopes label { display: flex; align-items: center; gap: 0.35rem; color: var(--text); font-size: 0.85rem; margin: 0; cursor: pointer; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     th, td { text-align: left; padding: 0.45rem 0.35rem; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -237,19 +239,41 @@
       }
     }
 
+    const ALL_SCOPES = ["rag:read", "skills:read", "activity:read", "admin"];
+
+    function scopesBadges(scopes) {
+      return (scopes || []).map(s => `<span class="badge">${s}</span>`).join("");
+    }
+
+    function scopesEditorHtml(id, current) {
+      const boxes = ALL_SCOPES.map(s => {
+        const checked = (current || []).includes(s) ? " checked" : "";
+        return `<label><input type="checkbox" value="${s}"${checked} /> ${s}</label>`;
+      }).join("");
+      return `<div class="scopes compact" data-edit-scopes="${id}">${boxes}
+        <button class="primary" data-save-scopes="${id}" type="button">Enregistrer</button>
+        <button class="ghost" data-cancel-scopes="${id}" type="button">Annuler</button>
+      </div>`;
+    }
+
     function renderTokens(rows) {
       const tb = $("tokens-body");
       tb.innerHTML = "";
       for (const r of rows) {
         const tr = document.createElement("tr");
-        const scopes = (r.scopes || []).map(s => `<span class="badge">${s}</span>`).join("");
+        tr.dataset.tokenId = r.id;
         const revoked = r.revoked_at ? `<span class="badge err">révoqué</span>` : "";
+        const actions = r.revoked_at ? "" : `
+          <div class="actions">
+            <button class="ghost" data-edit="${r.id}">Scopes</button>
+            <button class="danger" data-revoke="${r.id}">Révoquer</button>
+          </div>`;
         tr.innerHTML = `
           <td class="mono">${r.id}</td>
           <td>${r.name} ${revoked}</td>
-          <td>${scopes}</td>
+          <td class="scopes-cell" data-scopes="${(r.scopes || []).join(",")}">${scopesBadges(r.scopes)}</td>
           <td class="mono">${r.last_used_at || "—"}</td>
-          <td>${r.revoked_at ? "" : `<button class="danger" data-revoke="${r.id}">Révoquer</button>`}</td>`;
+          <td>${actions}</td>`;
         tb.appendChild(tr);
       }
       tb.querySelectorAll("[data-revoke]").forEach(btn => {
@@ -259,6 +283,28 @@
             await api("/admin/tokens/" + btn.dataset.revoke, { method: "DELETE" });
             await loadAll();
           } catch (e) { alert(e.message); }
+        });
+      });
+      tb.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tr = btn.closest("tr");
+          const cell = tr.querySelector(".scopes-cell");
+          const current = (cell.dataset.scopes || "").split(",").filter(Boolean);
+          cell.innerHTML = scopesEditorHtml(btn.dataset.edit, current);
+          cell.querySelector("[data-save-scopes]").addEventListener("click", async () => {
+            const scopes = [...cell.querySelectorAll("input:checked")].map(i => i.value);
+            if (!scopes.length) return alert("Au moins un scope requis");
+            try {
+              await api("/admin/tokens/" + btn.dataset.edit, {
+                method: "PATCH",
+                body: JSON.stringify({ scopes }),
+              });
+              await loadAll();
+            } catch (e) { alert(e.message); }
+          });
+          cell.querySelector("[data-cancel-scopes]").addEventListener("click", () => {
+            cell.innerHTML = scopesBadges(current);
+          });
         });
       });
     }

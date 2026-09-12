@@ -169,6 +169,35 @@ def revoke_token(token_id: int) -> bool:
         pool.putconn(conn)
 
 
+def update_token_scopes(token_id: int, scopes: list[str]) -> dict | None:
+    """Change les scopes sans régénérer le secret."""
+    assert pool is not None
+    conn = pool.getconn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """UPDATE mcp_tokens SET scopes = %s
+                   WHERE id = %s AND revoked_at IS NULL
+                   RETURNING id, name, scopes, created_at, revoked_at, last_used_at""",
+                (scopes, token_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback()
+                return None
+            d = dict(row)
+            for k in ("created_at", "revoked_at", "last_used_at"):
+                if d.get(k) is not None:
+                    d[k] = d[k].isoformat()
+        conn.commit()
+        return d
+    except psycopg2.Error:
+        conn.rollback()
+        raise
+    finally:
+        pool.putconn(conn)
+
+
 def authenticate(raw_token: str) -> dict | None:
     if not raw_token:
         return None
