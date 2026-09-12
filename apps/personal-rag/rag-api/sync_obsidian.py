@@ -337,7 +337,11 @@ def sync(args):
         ids_vus.add(source_id)
 
         mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-        if source_id in connus and connus[source_id] >= mtime:
+        if (
+            not args.force
+            and source_id in connus
+            and connus[source_id] >= mtime
+        ):
             stats["inchange"] += 1
             continue
 
@@ -466,6 +470,11 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Limiter le nb de fichiers ingérés (0 = illimité)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Réingérer toutes les notes (ignore mtime / skip inchangé)",
     )
     args = parser.parse_args()
     if not OPENAI_API_KEY:
