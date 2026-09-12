@@ -214,50 +214,60 @@ def activity_recent(limit: int = 20) -> str:
 
 
 class McpAuthMiddleware:
-    """ASGI middleware (pas BaseHTTPMiddleware) pour ne pas casser le streaming MCP."""
+    """ASGI middleware (pas BaseHTTPMiddleware) pour ne pas casser le streaming MCP.
+
+    Réécrit /mcp → /mcp/ avant le Mount Starlette, sinon 307 et Claude droppe Authorization.
+    """
 
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-        path = scope.get("path") or ""
-        if not path.startswith("/mcp"):
-            await self.app(scope, receive, send)
-            return
+        if scope["type"] == "http":
+            path = scope.get("path") or ""
+            # Évite le 307 Mount(/mcp) → /mcp/ qui fait perdre le Bearer côté Claude.ai
+            if path == "/mcp":
+                scope = dict(scope)
+                scope["path"] = "/mcp/"
+                if "raw_path" in scope:
+                    qs = scope.get("query_string") or b""
+                    scope["raw_path"] = b"/mcp/" + ((b"?" + qs) if qs else b"")
+                path = "/mcp/"
 
-        headers = {
-            k.decode("latin-1").lower(): v.decode("latin-1")
-            for k, v in scope.get("headers") or []
-        }
-        principal = db.authenticate(_bearer(headers.get("authorization", "")))
-        if not principal:
-            body = b'{"detail":"Token invalide"}'
-            www = (
-                'Bearer realm="mcp", '
-                f'resource_metadata="{PUBLIC_BASE}/.well-known/oauth-protected-resource"'
-            )
-            await send(
-                {
-                    "type": "http.response.start",
-                    "status": 401,
-                    "headers": [
-                        (b"content-type", b"application/json"),
-                        (b"content-length", str(len(body)).encode()),
-                        (b"www-authenticate", www.encode()),
-                    ],
+            if path.startswith("/mcp"):
+                headers = {
+                    k.decode("latin-1").lower(): v.decode("latin-1")
+                    for k, v in scope.get("headers") or []
                 }
-            )
-            await send({"type": "http.response.body", "body": body})
-            return
+                principal = db.authenticate(_bearer(headers.get("authorization", "")))
+                if not principal:
+                    body = b'{"detail":"Token invalide"}'
+                    www = (
+                        'Bearer realm="mcp", '
+                        f'resource_metadata="{PUBLIC_BASE}/.well-known/oauth-protected-resource"'
+                    )
+                    await send(
+                        {
+                            "type": "http.response.start",
+                            "status": 401,
+                            "headers": [
+                                (b"content-type", b"application/json"),
+                                (b"content-length", str(len(body)).encode()),
+                                (b"www-authenticate", www.encode()),
+                            ],
+                        }
+                    )
+                    await send({"type": "http.response.body", "body": body})
+                    return
 
-        token = _principal_var.set(principal)
-        try:
-            await self.app(scope, receive, send)
-        finally:
-            _principal_var.reset(token)
+                token = _principal_var.set(principal)
+                try:
+                    await self.app(scope, receive, send)
+                finally:
+                    _principal_var.reset(token)
+                return
+
+        await self.app(scope, receive, send)
 
 
 def _make_mcp_asgi():
