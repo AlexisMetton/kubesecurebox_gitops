@@ -1,5 +1,9 @@
-# Ingress MCP Hub — Tailscale only (pas de tunnel Cloudflare public)
-# Accessible : https://mcp.kubesecurebox.com (DNS A → IP Tailscale du master)
+# Ingress MCP Hub — public via Cloudflare Tunnel
+# ================================================
+# Trafic : Internet → Cloudflare Tunnel → ingress-nginx (HTTP) → mcp-hub:8000
+# DNS : Public Hostname Zero Trust (pas de A record Tailscale)
+# Auth app : Bearer token (MCP /v1 + middleware /mcp)
+# Optionnel : Cloudflare Access uniquement sur /admin (pas sur /mcp — Anthropic doit joindre le hub)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,7 +11,8 @@ metadata:
   namespace: mcp-hub
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Tunnel envoie du HTTP : ssl-redirect false évite les boucles HTTPS
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/upstream-vhost: "mcp.kubesecurebox.com"
     # Sessions MCP / SSE potentiellement longues

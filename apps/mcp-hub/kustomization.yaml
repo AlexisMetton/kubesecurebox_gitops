@@ -1,7 +1,7 @@
 # mcp-hub — Control-plane tokens + serveur MCP
 # ============================================
-# Exposition Tailscale : https://mcp.kubesecurebox.com
-# Prérequis secrets : voir SETUP.md (postgres-credentials + mcp-hub-secrets)
+# Exposition publique : Cloudflare Tunnel → https://mcp.kubesecurebox.com
+# Prérequis : Public Hostname Zero Trust + secrets (voir SETUP.md)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
