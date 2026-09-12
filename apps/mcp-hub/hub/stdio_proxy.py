@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""
+Proxy MCP stdio pour Claude Desktop / clients locaux.
+Appelle l'API REST du mcp-hub (évite mcp-remote + OAuth).
+
+Usage Claude Desktop :
+  command: python.exe
+  args: [chemin/vers/stdio_proxy.py]
+  env: MCP_HUB_URL, MCP_TOKEN
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+import requests
+
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    print(
+        "Module mcp manquant. Installe : python -m pip install mcp requests",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+HUB = os.environ.get("MCP_HUB_URL", "https://mcp.kubesecurebox.com").rstrip("/")
+TOKEN = os.environ.get("MCP_TOKEN", "").strip()
+if not TOKEN:
+    print("MCP_TOKEN requis", file=sys.stderr)
+    raise SystemExit(1)
+
+TIMEOUT = 120
+
+
+def _headers() -> dict:
+    return {"Authorization": f"Bearer {TOKEN}"}
+
+
+def _get(path: str) -> str:
+    r = requests.get(f"{HUB}{path}", headers=_headers(), timeout=TIMEOUT)
+    r.raise_for_status()
+    return json.dumps(r.json(), ensure_ascii=False)
+
+
+def _post(path: str, body: dict) -> str:
+    r = requests.post(
+        f"{HUB}{path}", headers=_headers(), json=body, timeout=TIMEOUT
+    )
+    r.raise_for_status()
+    return json.dumps(r.json(), ensure_ascii=False)
+
+
+mcp = FastMCP(
+    "kubesecurebox",
+    instructions=(
+        "Hub KubeSecureBox. Utilise rag_search pour les notes, "
+        "rag_ask pour une réponse synthétisée, skills_* pour les procédures."
+    ),
+)
+
+
+@mcp.tool()
+def rag_ask(
+    question: str,
+    dossier: str | None = None,
+    tag: str | None = None,
+    top: int = 8,
+) -> str:
+    """Pose une question sur les notes personnelles (Obsidian + Google Drive)."""
+    body: dict = {"question": question, "top": top}
+    if dossier:
+        body["dossier"] = dossier
+    if tag:
+        body["tag"] = tag
+    try:
+        return _post("/v1/rag/ask", body)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def rag_search(
+    question: str,
+    dossier: str | None = None,
+    tag: str | None = None,
+    top: int = 8,
+) -> str:
+    """Recherche vectorielle seule (extraits bruts, sans LLM)."""
+    body: dict = {"question": question, "top": top}
+    if dossier:
+        body["dossier"] = dossier
+    if tag:
+        body["tag"] = tag
+    try:
+        return _post("/v1/rag/search", body)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def rag_stats() -> str:
+    """Statistiques du corpus RAG."""
+    try:
+        return _get("/v1/rag/stats")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def rag_dossiers() -> str:
+    """Liste les dossiers indexés."""
+    try:
+        return _get("/v1/rag/dossiers")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def skills_list() -> str:
+    """Liste les skills disponibles."""
+    try:
+        return _get("/v1/skills")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def skills_get(name: str) -> str:
+    """Charge un skill par son nom."""
+    try:
+        return _get(f"/v1/skills/{name}")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")

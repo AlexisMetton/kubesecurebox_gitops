@@ -160,7 +160,8 @@ class McpAuthMiddleware(BaseHTTPMiddleware):
             auth = request.headers.get("authorization", "")
             principal = db.authenticate(_bearer(auth))
             if not principal:
-                return JSONResponse({"detail": "Token invalide"}, status_code=401)
+                # 403 (pas 401) : évite que mcp-remote lance un flux OAuth / DCR
+                return JSONResponse({"detail": "Token invalide"}, status_code=403)
             token = _principal_var.set(principal)
             try:
                 return await call_next(request)
@@ -237,6 +238,46 @@ def admin_revoke_token(token_id: int):
     if not db.revoke_token(token_id):
         raise HTTPException(status_code=404, detail="Token introuvable ou déjà révoqué")
     return {"revoked": True, "id": token_id}
+
+
+class RagQuery(BaseModel):
+    question: str = Field(min_length=3, max_length=4000)
+    dossier: str | None = None
+    tag: str | None = None
+    top: int = Field(default=8, ge=1, le=30)
+
+
+@app.post("/v1/rag/ask", dependencies=[Depends(require_scope("rag:read"))])
+def v1_rag_ask(body: RagQuery):
+    return rag_client.ask(body.question, body.dossier, body.tag, body.top)
+
+
+@app.post("/v1/rag/search", dependencies=[Depends(require_scope("rag:read"))])
+def v1_rag_search(body: RagQuery):
+    return rag_client.search(body.question, body.dossier, body.tag, body.top)
+
+
+@app.get("/v1/rag/stats", dependencies=[Depends(require_scope("rag:read"))])
+def v1_rag_stats():
+    return rag_client.stats()
+
+
+@app.get("/v1/rag/dossiers", dependencies=[Depends(require_scope("rag:read"))])
+def v1_rag_dossiers():
+    return rag_client.dossiers()
+
+
+@app.get("/v1/skills", dependencies=[Depends(require_scope("skills:read"))])
+def v1_skills_list():
+    return {"skills": skills_mod.list_skills()}
+
+
+@app.get("/v1/skills/{name}", dependencies=[Depends(require_scope("skills:read"))])
+def v1_skills_get(name: str):
+    skill = skills_mod.get_skill(name)
+    if not skill:
+        raise HTTPException(status_code=404, detail="skill inconnu")
+    return skill
 
 
 app.mount("/mcp", mcp_asgi)
