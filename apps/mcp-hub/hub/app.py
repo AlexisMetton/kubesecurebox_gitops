@@ -8,6 +8,7 @@ from contextvars import ContextVar
 from pathlib import Path
 
 import db
+import oauth_bridge
 import rag_client
 import skills as skills_mod
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
@@ -19,6 +20,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 BOOTSTRAP = os.environ.get("MCP_BOOTSTRAP_ADMIN_TOKEN", "")
+PUBLIC_BASE = os.environ.get("MCP_PUBLIC_BASE", "https://mcp.kubesecurebox.com").rstrip(
+    "/"
+)
 _principal_var: ContextVar[dict | None] = ContextVar("mcp_principal", default=None)
 CODE_DIR = Path(__file__).resolve().parent
 
@@ -216,7 +220,16 @@ class McpAuthMiddleware(BaseHTTPMiddleware):
             auth = request.headers.get("authorization", "")
             principal = db.authenticate(_bearer(auth))
             if not principal:
-                return JSONResponse({"detail": "Token invalide"}, status_code=403)
+                return JSONResponse(
+                    {"detail": "Token invalide"},
+                    status_code=401,
+                    headers={
+                        "WWW-Authenticate": (
+                            'Bearer realm="mcp", '
+                            f'resource_metadata="{PUBLIC_BASE}/.well-known/oauth-protected-resource"'
+                        )
+                    },
+                )
             token = _principal_var.set(principal)
             try:
                 return await call_next(request)
@@ -264,6 +277,7 @@ app = FastAPI(
     lifespan=_build_lifespan(),
 )
 app.add_middleware(McpAuthMiddleware)
+app.include_router(oauth_bridge.router)
 
 
 @app.get("/health")

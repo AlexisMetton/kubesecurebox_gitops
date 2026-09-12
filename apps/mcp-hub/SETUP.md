@@ -29,13 +29,22 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://mcp.kubesecurebox.com/mcp
 
 ## Claude.ai + iOS (custom connector)
 
-1. Admin UI → crée un token **dédié** (ex. `claude-ios`) scopes : `rag:read`, `skills:read`, `activity:read` — **pas** `admin`
-2. Sur [claude.ai](https://claude.ai) → Customize → Connectors → **Add custom connector**
-3. URL MCP : `https://mcp.kubesecurebox.com/mcp`
-4. Auth : **Request headers** (beta) → header `Authorization` → valeur `Bearer <secret>` (mot `Bearer` + espace + token)
-5. Sur iPhone : même compte Claude → Connectors → activer le connecteur (ajout côté web, usage mobile)
+Claude.ai attend souvent un flux **OAuth** (les en-têtes Bearer seuls sont buggés / incomplets).
 
-Desktop peut garder le **stdio proxy** (Tailscale plus nécessaire si l’URL publique répond) ou basculer sur le même connecteur remote.
+1. Admin UI → token dédié `claude-ios` (`rag:read`, `skills:read`, `activity:read`)
+2. claude.ai → Connectors → **Add custom connector**
+3. URL : `https://mcp.kubesecurebox.com/mcp`
+4. Auth : **Se connecter maintenant** (OAuth)
+5. Client OAuth : **S’enregistrer automatiquement** (DCR) — ou identité Claude
+6. Transport : HTTP streamable
+7. Au Connect : une page Hub demande de **coller le secret du token** → Autoriser
+8. iPhone : même compte → activer le connecteur
+
+Vérifs OAuth :
+```bash
+curl -sS https://mcp.kubesecurebox.com/.well-known/oauth-protected-resource
+curl -sS https://mcp.kubesecurebox.com/.well-known/oauth-authorization-server
+```
 
 ---
 

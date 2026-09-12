@@ -92,6 +92,8 @@ spec:
                 secretKeyRef:
                   name: mcp-hub-secrets
                   key: MCP_BOOTSTRAP_ADMIN_TOKEN
+            - name: MCP_PUBLIC_BASE
+              value: "https://mcp.kubesecurebox.com"
             - name: SKILLS_DIR
               value: "/skills"
           volumeMounts:

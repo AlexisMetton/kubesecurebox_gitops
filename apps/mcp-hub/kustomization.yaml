@@ -24,6 +24,7 @@ configMapGenerator:
       - db.py=hub/db.py
       - rag_client.py=hub/rag_client.py
       - skills.py=hub/skills.py
+      - oauth_bridge.py=hub/oauth_bridge.py
       - requirements.txt=hub/requirements.txt
       - admin.html=hub/admin.html
   - name: mcp-skills
