@@ -31,19 +31,21 @@ def list_skills() -> list[dict]:
     if not SKILLS_DIR.is_dir():
         return []
     out = []
-    # Fichiers plats : hello.md / ou dossiers hello/SKILL.md
+    # Fichiers plats ConfigMap (clé=hello) / hello.md / dossiers hello/SKILL.md
     for p in sorted(SKILLS_DIR.rglob("*")):
         if not p.is_file():
             continue
-        if p.name == "SKILL.md" or p.suffix.lower() == ".md":
-            skill = _parse_skill(p)
-            if skill:
-                out.append(
-                    {
-                        "name": skill["name"],
-                        "description": skill["description"],
-                    }
-                )
+        # Ignorer éventuels fichiers cachés / non-skill
+        if p.name.startswith("."):
+            continue
+        skill = _parse_skill(p)
+        if skill:
+            out.append(
+                {
+                    "name": skill["name"],
+                    "description": skill["description"],
+                }
+            )
     # Dédupliquer par name
     seen = set()
     unique = []
