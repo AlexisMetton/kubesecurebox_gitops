@@ -1,8 +1,13 @@
-# MCP Hub — suite après déploiement
+# MCP Hub — admin UI, audit, Claude Desktop
+
+## Admin UI (Tailscale)
+
+https://mcp.kubesecurebox.com/admin
+
+1. Colle un token avec scope **admin** (bootstrap ou token créé pour ça)
+2. Gère tokens / vois skills / journal d’activité
 
 ## Claude Desktop (stdio proxy)
-
-`mcp-remote` tente OAuth → échec. Utiliser `hub/stdio_proxy.py` :
 
 ```json
 "mcpServers": {
@@ -17,8 +22,21 @@
 }
 ```
 
-Prérequis : `python -m pip install mcp requests` + Tailscale + **code hub à jour** (routes `/v1/*`).
+Scopes utiles client : `rag:read`, `skills:read`, `activity:read`.
 
-## Health
+Prérequis : `python -m pip install --user mcp requests`
 
-`curl -sk https://mcp.kubesecurebox.com/health`
+## API
+
+| Path | Rôle |
+|------|------|
+| `GET /health` | health |
+| `GET /admin` | UI |
+| `POST/GET/DELETE /admin/tokens` | tokens (admin) |
+| `/v1/rag/*` | RAG |
+| `/v1/skills` | skills |
+| `/v1/activity` | journal |
+
+## Skills Git
+
+Ajouter sous `apps/mcp-hub/skills/<nom>/SKILL.md` puis commit + sync Argo.

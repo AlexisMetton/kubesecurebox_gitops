@@ -25,9 +25,12 @@ configMapGenerator:
       - rag_client.py=hub/rag_client.py
       - skills.py=hub/skills.py
       - requirements.txt=hub/requirements.txt
+      - admin.html=hub/admin.html
   - name: mcp-skills
     files:
       - hello=skills/hello/SKILL.md
+      - vault-rag=skills/vault-rag/SKILL.md
+      - weekly-review=skills/weekly-review/SKILL.md
 
 labels:
   - pairs:

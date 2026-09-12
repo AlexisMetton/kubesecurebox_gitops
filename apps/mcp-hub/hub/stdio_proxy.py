@@ -17,13 +17,16 @@ import sys
 import requests
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 except ImportError:
-    print(
-        "Module mcp manquant. Installe : python -m pip install mcp requests",
-        file=sys.stderr,
-    )
-    raise SystemExit(1)
+    try:
+        from mcp.server.fastmcp import FastMCP as MCPServer  # mcp v1
+    except ImportError:
+        print(
+            "Module mcp manquant. Installe : python -m pip install --user mcp requests",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 HUB = os.environ.get("MCP_HUB_URL", "https://mcp.kubesecurebox.com").rstrip("/")
 TOKEN = os.environ.get("MCP_TOKEN", "").strip()
@@ -52,7 +55,7 @@ def _post(path: str, body: dict) -> str:
     return json.dumps(r.json(), ensure_ascii=False)
 
 
-mcp = FastMCP(
+mcp = MCPServer(
     "kubesecurebox",
     instructions=(
         "Hub KubeSecureBox. Utilise rag_search pour les notes, "
@@ -135,5 +138,20 @@ def skills_get(name: str) -> str:
         return json.dumps({"error": str(e)})
 
 
+@mcp.tool()
+def activity_recent(limit: int = 20) -> str:
+    """Historique récent des appels tools (journal partagé)."""
+    try:
+        return _get(f"/v1/activity?limit={int(limit)}")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    # mcp 2.x : run_stdio_async / run ; v1 : run(transport="stdio")
+    if hasattr(mcp, "run_stdio_async"):
+        import anyio
+
+        anyio.run(mcp.run_stdio_async)
+    else:
+        mcp.run(transport="stdio")

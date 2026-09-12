@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP Hub — KubeSecureBox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --line: #2a3544;
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --accent: #3d9a7a;
+      --accent-dim: #2a6b55;
+      --danger: #c45c5c;
+      --ok: #3d9a7a;
+      --warn: #c9a227;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1a2e28 0%, transparent 55%),
+                  radial-gradient(900px 500px at 100% 0%, #1a2433 0%, transparent 50%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.5rem 1.75rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    header p { margin: 0.35rem 0 1rem; color: var(--muted); font-size: 0.9rem; }
+    main {
+      display: grid;
+      gap: 1.25rem;
+      padding: 1.25rem 1.75rem 2.5rem;
+      max-width: 1100px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #121820;
+      color: var(--text);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+    }
+    .row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+    .row > * { flex: 1; min-width: 140px; }
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    button.primary { background: var(--accent); color: #04140f; }
+    button.primary:hover { background: #4bb892; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    button.danger { background: transparent; color: var(--danger); border: 1px solid #5a3030; }
+    .scopes { display: flex; flex-wrap: wrap; gap: 0.65rem 1rem; margin: 0.5rem 0 0.85rem; }
+    .scopes label { display: flex; align-items: center; gap: 0.35rem; color: var(--text); font-size: 0.85rem; margin: 0; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.45rem 0.35rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .mono { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      background: #243040;
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin: 0.1rem 0.15rem 0.1rem 0;
+    }
+    .badge.ok { background: #1e3d32; color: #7dceb0; }
+    .badge.err { background: #3d2222; color: #e0a0a0; }
+    .msg {
+      margin-top: 0.75rem;
+      padding: 0.65rem 0.8rem;
+      border-radius: 6px;
+      background: #121820;
+      border: 1px solid var(--line);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .msg.secret { border-color: var(--accent-dim); color: #b8e0d0; }
+    .hidden { display: none; }
+    .status { font-size: 0.8rem; color: var(--muted); }
+    .status.on { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MCP Hub</h1>
+    <p>KubeSecureBox — tokens, skills, journal d’activité</p>
+  </header>
+  <main>
+    <section class="panel" id="login-panel">
+      <h2>Connexion</h2>
+      <p class="status" id="auth-status">Token admin requis (scope admin)</p>
+      <div class="row" style="margin-top:0.75rem">
+        <div>
+          <label for="token">Bearer token</label>
+          <input id="token" type="password" placeholder="colle ton token admin" autocomplete="off" />
+        </div>
+        <div style="flex:0">
+          <label>&nbsp;</label>
+          <button class="primary" id="btn-save">Enregistrer</button>
+        </div>
+        <div style="flex:0">
+          <label>&nbsp;</label>
+          <button class="ghost" id="btn-clear">Oublier</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="tokens-panel">
+      <h2>Tokens</h2>
+      <div class="row">
+        <div>
+          <label for="new-name">Nom</label>
+          <input id="new-name" type="text" placeholder="claude-desktop" />
+        </div>
+      </div>
+      <div class="scopes" id="scope-boxes">
+        <label><input type="checkbox" value="rag:read" checked /> rag:read</label>
+        <label><input type="checkbox" value="skills:read" checked /> skills:read</label>
+        <label><input type="checkbox" value="activity:read" checked /> activity:read</label>
+        <label><input type="checkbox" value="admin" /> admin</label>
+      </div>
+      <button class="primary" id="btn-create">Créer token</button>
+      <div id="create-msg" class="msg secret hidden"></div>
+      <div style="margin-top:1rem; overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Nom</th><th>Scopes</th><th>Dernier usage</th><th></th></tr>
+          </thead>
+          <tbody id="tokens-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Skills</h2>
+      <div id="skills-list" class="mono status">—</div>
+    </section>
+
+    <section class="panel">
+      <h2>Journal d’activité</h2>
+      <button class="ghost" id="btn-refresh-activity">Rafraîchir</button>
+      <div style="margin-top:0.75rem; overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>Quand</th><th>Client</th><th>Tool</th><th>OK</th><th>Résumé</th><th>ms</th></tr>
+          </thead>
+          <tbody id="activity-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script>
+    const KEY = "mcp_hub_admin_token";
+    const $ = (id) => document.getElementById(id);
+
+    function token() { return localStorage.getItem(KEY) || ""; }
+
+    function setStatus(ok, text) {
+      const el = $("auth-status");
+      el.textContent = text;
+      el.className = "status" + (ok ? " on" : "");
+    }
+
+    async function api(path, opts = {}) {
+      const t = token();
+      if (!t) throw new Error("Pas de token");
+      const res = await fetch(path, {
+        ...opts,
+        headers: {
+          "Authorization": "Bearer " + t,
+          "Content-Type": "application/json",
+          ...(opts.headers || {}),
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || res.statusText || String(res.status));
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    async function loadAll() {
+      try {
+        const [tok, skills, act] = await Promise.all([
+          api("/admin/tokens"),
+          api("/v1/skills"),
+          api("/v1/activity?limit=40"),
+        ]);
+        setStatus(true, "Connecté — scope admin OK");
+        renderTokens(tok.tokens || []);
+        renderSkills(skills.skills || []);
+        renderActivity(act.events || []);
+      } catch (e) {
+        setStatus(false, "Erreur: " + e.message);
+      }
+    }
+
+    function renderTokens(rows) {
+      const tb = $("tokens-body");
+      tb.innerHTML = "";
+      for (const r of rows) {
+        const tr = document.createElement("tr");
+        const scopes = (r.scopes || []).map(s => `<span class="badge">${s}</span>`).join("");
+        const revoked = r.revoked_at ? `<span class="badge err">révoqué</span>` : "";
+        tr.innerHTML = `
+          <td class="mono">${r.id}</td>
+          <td>${r.name} ${revoked}</td>
+          <td>${scopes}</td>
+          <td class="mono">${r.last_used_at || "—"}</td>
+          <td>${r.revoked_at ? "" : `<button class="danger" data-revoke="${r.id}">Révoquer</button>`}</td>`;
+        tb.appendChild(tr);
+      }
+      tb.querySelectorAll("[data-revoke]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Révoquer ce token ?")) return;
+          try {
+            await api("/admin/tokens/" + btn.dataset.revoke, { method: "DELETE" });
+            await loadAll();
+          } catch (e) { alert(e.message); }
+        });
+      });
+    }
+
+    function renderSkills(skills) {
+      if (!skills.length) {
+        $("skills-list").textContent = "Aucun skill";
+        return;
+      }
+      $("skills-list").innerHTML = skills.map(s =>
+        `<div style="margin:0.4rem 0"><strong>${s.name}</strong> — <span style="color:var(--muted)">${s.description || ""}</span></div>`
+      ).join("");
+    }
+
+    function renderActivity(events) {
+      const tb = $("activity-body");
+      tb.innerHTML = "";
+      for (const e of events) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono">${e.created_at || ""}</td>
+          <td>${e.token_name || ""}</td>
+          <td class="mono">${e.tool_name || ""}</td>
+          <td><span class="badge ${e.ok ? "ok" : "err"}">${e.ok ? "ok" : "err"}</span></td>
+          <td>${(e.summary || "").slice(0, 120)}</td>
+          <td class="mono">${e.latency_ms ?? "—"}</td>`;
+        tb.appendChild(tr);
+      }
+    }
+
+    $("btn-save").addEventListener("click", () => {
+      localStorage.setItem(KEY, $("token").value.trim());
+      loadAll();
+    });
+    $("btn-clear").addEventListener("click", () => {
+      localStorage.removeItem(KEY);
+      $("token").value = "";
+      setStatus(false, "Token effacé");
+    });
+    $("btn-create").addEventListener("click", async () => {
+      const name = $("new-name").value.trim();
+      if (!name) return alert("Nom requis");
+      const scopes = [...document.querySelectorAll("#scope-boxes input:checked")].map(i => i.value);
+      try {
+        const out = await api("/admin/tokens", {
+          method: "POST",
+          body: JSON.stringify({ name, scopes }),
+        });
+        const box = $("create-msg");
+        box.classList.remove("hidden");
+        box.textContent = "Secret (une seule fois) :\n" + out.secret;
+        $("new-name").value = "";
+        await loadAll();
+      } catch (e) { alert(e.message); }
+    });
+    $("btn-refresh-activity").addEventListener("click", loadAll);
+
+    if (token()) {
+      $("token").value = token();
+      loadAll();
+    }
+  </script>
+</body>
+</html>

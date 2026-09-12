@@ -30,7 +30,24 @@ CREATE TABLE IF NOT EXISTS mcp_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_tokens_active
     ON mcp_tokens (id) WHERE revoked_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS mcp_audit_events (
+    id            BIGSERIAL PRIMARY KEY,
+    token_id      BIGINT REFERENCES mcp_tokens(id) ON DELETE SET NULL,
+    token_name    TEXT NOT NULL DEFAULT '',
+    tool_name     TEXT NOT NULL,
+    ok            BOOLEAN NOT NULL DEFAULT true,
+    summary       TEXT NOT NULL DEFAULT '',
+    latency_ms    INT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_audit_created
+    ON mcp_audit_events (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mcp_audit_token
+    ON mcp_audit_events (token_id, created_at DESC);
 """
+
+ALLOWED_SCOPES = {"admin", "rag:read", "skills:read", "activity:read"}
 
 
 def init_pool() -> None:
@@ -68,7 +85,6 @@ def _verify_hash(raw: str, token_hash: str) -> bool:
 
 
 def bootstrap_admin_if_needed(bootstrap_token: str) -> None:
-    """Crée le token admin initial si la table est vide et qu'un bootstrap est fourni."""
     if not bootstrap_token.strip():
         return
     assert pool is not None
@@ -81,7 +97,11 @@ def bootstrap_admin_if_needed(bootstrap_token: str) -> None:
             cur.execute(
                 """INSERT INTO mcp_tokens (name, token_hash, scopes)
                    VALUES (%s, %s, %s)""",
-                ("bootstrap-admin", _hash_token(bootstrap_token.strip()), ["admin", "rag:read", "skills:read"]),
+                (
+                    "bootstrap-admin",
+                    _hash_token(bootstrap_token.strip()),
+                    ["admin", "rag:read", "skills:read", "activity:read"],
+                ),
             )
         conn.commit()
     finally:
@@ -150,7 +170,6 @@ def revoke_token(token_id: int) -> bool:
 
 
 def authenticate(raw_token: str) -> dict | None:
-    """Retourne {id, name, scopes} ou None."""
     if not raw_token:
         return None
     assert pool is not None
@@ -174,5 +193,72 @@ def authenticate(raw_token: str) -> dict | None:
                         "scopes": list(row["scopes"] or []),
                     }
         return None
+    finally:
+        pool.putconn(conn)
+
+
+def log_event(
+    token_id: int | None,
+    token_name: str,
+    tool_name: str,
+    ok: bool,
+    summary: str,
+    latency_ms: int | None = None,
+) -> None:
+    assert pool is not None
+    conn = pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO mcp_audit_events
+                   (token_id, token_name, tool_name, ok, summary, latency_ms)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (
+                    token_id,
+                    token_name[:200],
+                    tool_name[:120],
+                    ok,
+                    (summary or "")[:800],
+                    latency_ms,
+                ),
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pool.putconn(conn)
+
+
+def list_activity(limit: int = 50, token_id: int | None = None) -> list[dict]:
+    assert pool is not None
+    limit = max(1, min(limit, 200))
+    conn = pool.getconn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if token_id is not None:
+                cur.execute(
+                    """SELECT id, token_id, token_name, tool_name, ok, summary,
+                              latency_ms, created_at
+                       FROM mcp_audit_events
+                       WHERE token_id = %s
+                       ORDER BY id DESC LIMIT %s""",
+                    (token_id, limit),
+                )
+            else:
+                cur.execute(
+                    """SELECT id, token_id, token_name, tool_name, ok, summary,
+                              latency_ms, created_at
+                       FROM mcp_audit_events
+                       ORDER BY id DESC LIMIT %s""",
+                    (limit,),
+                )
+            rows = []
+            for r in cur.fetchall():
+                d = dict(r)
+                if d.get("created_at") is not None:
+                    d["created_at"] = d["created_at"].isoformat()
+                rows.append(d)
+            return rows
     finally:
         pool.putconn(conn)
