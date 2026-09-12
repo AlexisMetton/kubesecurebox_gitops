@@ -1,0 +1,132 @@
+# Deployment mcp-hub — control API + MCP HTTP
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-hub
+  namespace: mcp-hub
+  labels:
+    app: mcp-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-hub
+  template:
+    metadata:
+      labels:
+        app: mcp-hub
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoringDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: kubesecurebox.io/workload
+                    operator: In
+                    values: ["apps"]
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/part-of: kubesecurebox
+                topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: install-deps
+          image: python:3.12-slim
+          command:
+            - bash
+            - -c
+            - pip install --no-cache-dir -r /code/requirements.txt -t /deps
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: deps
+              mountPath: /deps
+      containers:
+        - name: mcp-hub
+          image: python:3.12-slim
+          command:
+            - bash
+            - -c
+            - export PYTHONPATH=/deps && cd /code && python -m uvicorn app:app --host 0.0.0.0 --port 8000
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: PG_HOST
+              value: "postgres.personal-rag.svc.cluster.local"
+            - name: PG_PORT
+              value: "5432"
+            - name: PG_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: postgres-db
+            - name: PG_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: postgres-user
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: postgres-password
+            - name: RAG_API_URL
+              value: "http://rag-api.personal-rag.svc.cluster.local:8000"
+            - name: RAG_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mcp-hub-secrets
+                  key: RAG_API_TOKEN
+            - name: MCP_BOOTSTRAP_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mcp-hub-secrets
+                  key: MCP_BOOTSTRAP_ADMIN_TOKEN
+            - name: SKILLS_DIR
+              value: "/skills"
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: deps
+              mountPath: /deps
+            - name: skills
+              mountPath: /skills
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 90
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 45
+            periodSeconds: 15
+      volumes:
+        - name: code
+          configMap:
+            name: mcp-hub-code
+        - name: deps
+          emptyDir: {}
+        - name: skills
+          configMap:
+            name: mcp-skills

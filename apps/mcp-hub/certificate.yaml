@@ -1,0 +1,15 @@
+# Certificate Let's Encrypt pour mcp.kubesecurebox.com (Tailscale)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mcp-kubesecurebox-tls
+  namespace: mcp-hub
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: mcp-kubesecurebox-tls
+  issuerRef:
+    name: letsencrypt-dns-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - mcp.kubesecurebox.com

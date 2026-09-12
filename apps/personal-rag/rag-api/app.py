@@ -294,6 +294,36 @@ def ask(req: AskRequest):
     }
 
 
+@app.post("/search", dependencies=[Depends(verifier_token)])
+def search(req: AskRequest):
+    """Recherche vectorielle seule (pas de LLM) — pour agents MCP."""
+    debut = time.time()
+    try:
+        vecteur = embed_question(req.question)
+        extraits = rechercher(vecteur, req.dossier, req.tag, req.top)
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=503, detail="Service embeddings momentanément indisponible"
+        ) from e
+
+    results = [
+        {
+            "contenu": e["contenu"],
+            "nom": e["nom"],
+            "chemin": e["chemin_vault"],
+            "dossier": e["dossier"],
+            "date_document": e["date_document"],
+            "distance": e["distance"],
+        }
+        for e in extraits
+    ]
+    return {
+        "results": results,
+        "count": len(results),
+        "duration_ms": int((time.time() - debut) * 1000),
+    }
+
+
 @app.get("/stats", dependencies=[Depends(verifier_token)])
 def stats():
     conn = pool.getconn()

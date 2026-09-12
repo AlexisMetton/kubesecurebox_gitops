@@ -1,0 +1,32 @@
+# Ingress MCP Hub — Tailscale only (pas de tunnel Cloudflare public)
+# Accessible : https://mcp.kubesecurebox.com (DNS A → IP Tailscale du master)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp-hub-ingress
+  namespace: mcp-hub
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/upstream-vhost: "mcp.kubesecurebox.com"
+    # Sessions MCP / SSE potentiellement longues
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.kubesecurebox.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-hub
+                port:
+                  number: 8000
+  tls:
+    - hosts:
+        - mcp.kubesecurebox.com
+      secretName: mcp-kubesecurebox-tls

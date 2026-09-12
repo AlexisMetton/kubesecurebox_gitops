@@ -15,4 +15,5 @@ resources:
   - portainer
   - stock-analyzer
   - personal-rag
+  - mcp-hub
   # - openclaw  # Désactivé — assistant Discord IA ; décommenter pour redéployer

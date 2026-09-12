@@ -1,0 +1,36 @@
+# mcp-hub — Control-plane tokens + serveur MCP
+# ============================================
+# Exposition Tailscale : https://mcp.kubesecurebox.com
+# Prérequis secrets : voir SETUP.md (postgres-credentials + mcp-hub-secrets)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mcp-hub
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - certificate.yaml
+  - ingress.yaml
+  - rbac-ingress-nginx-tls.yaml
+  - postgres-credentials-sealed.yaml
+  - mcp-hub-secrets-sealed.yaml
+
+configMapGenerator:
+  - name: mcp-hub-code
+    files:
+      - app.py=hub/app.py
+      - db.py=hub/db.py
+      - rag_client.py=hub/rag_client.py
+      - skills.py=hub/skills.py
+      - requirements.txt=hub/requirements.txt
+  - name: mcp-skills
+    files:
+      - hello=skills/hello/SKILL.md
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: mcp-hub
+      app.kubernetes.io/part-of: kubesecurebox
+    includeSelectors: false

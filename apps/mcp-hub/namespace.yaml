@@ -1,0 +1,8 @@
+# Namespace mcp-hub — gateway MCP + control-plane tokens
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-hub
+  labels:
+    app.kubernetes.io/name: mcp-hub
+    app.kubernetes.io/part-of: kubesecurebox
