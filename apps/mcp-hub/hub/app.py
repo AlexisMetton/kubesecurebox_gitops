@@ -15,7 +15,6 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -214,31 +213,65 @@ def activity_recent(limit: int = 20) -> str:
         return json.dumps({"error": str(e)})
 
 
-class McpAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.url.path.startswith("/mcp"):
-            auth = request.headers.get("authorization", "")
-            principal = db.authenticate(_bearer(auth))
-            if not principal:
-                return JSONResponse(
-                    {"detail": "Token invalide"},
-                    status_code=401,
-                    headers={
-                        "WWW-Authenticate": (
-                            'Bearer realm="mcp", '
-                            f'resource_metadata="{PUBLIC_BASE}/.well-known/oauth-protected-resource"'
-                        )
-                    },
-                )
-            token = _principal_var.set(principal)
-            try:
-                return await call_next(request)
-            finally:
-                _principal_var.reset(token)
-        return await call_next(request)
+class McpAuthMiddleware:
+    """ASGI middleware (pas BaseHTTPMiddleware) pour ne pas casser le streaming MCP."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        path = scope.get("path") or ""
+        if not path.startswith("/mcp"):
+            await self.app(scope, receive, send)
+            return
+
+        headers = {
+            k.decode("latin-1").lower(): v.decode("latin-1")
+            for k, v in scope.get("headers") or []
+        }
+        principal = db.authenticate(_bearer(headers.get("authorization", "")))
+        if not principal:
+            body = b'{"detail":"Token invalide"}'
+            www = (
+                'Bearer realm="mcp", '
+                f'resource_metadata="{PUBLIC_BASE}/.well-known/oauth-protected-resource"'
+            )
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                        (b"www-authenticate", www.encode()),
+                    ],
+                }
+            )
+            await send({"type": "http.response.body", "body": body})
+            return
+
+        token = _principal_var.set(principal)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _principal_var.reset(token)
 
 
-mcp_asgi = mcp.http_app(path="/")
+def _make_mcp_asgi():
+    # stateless_http : plus robuste derrière Cloudflare (pas d'affinité de session)
+    try:
+        return mcp.http_app(path="/", transport="streamable-http", stateless_http=True)
+    except TypeError:
+        try:
+            return mcp.http_app(path="/", stateless_http=True)
+        except TypeError:
+            return mcp.http_app(path="/")
+
+
+mcp_asgi = _make_mcp_asgi()
 
 
 @asynccontextmanager

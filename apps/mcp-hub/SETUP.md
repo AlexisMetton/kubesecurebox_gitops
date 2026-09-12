@@ -38,7 +38,8 @@ Claude.ai attend souvent un flux **OAuth** (les en-têtes Bearer seuls sont bugg
 5. Client OAuth : **S’enregistrer automatiquement** (DCR) — ou identité Claude
 6. Transport : HTTP streamable
 7. Au Connect : une page Hub demande de **coller le secret du token** → Autoriser
-8. iPhone : même compte → activer le connecteur
+8. Si « autorisé mais erreur de connexion » : attendre le déploiement (middleware ASGI + MCP stateless), puis **Se reconnecter**
+9. iPhone : même compte → activer le connecteur
 
 Vérifs OAuth :
 ```bash
