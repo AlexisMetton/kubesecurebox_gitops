@@ -68,7 +68,7 @@ Scans = Jobs éphémères dans le ns `pentest-lab` (VPN Proton dans le pod). Le 
 ### Prérequis ops
 
 1. Déployer `apps/pentest-lab` (Argo) + secret `proton-openvpn` (voir `apps/pentest-lab/README.md`)
-2. Build/push image `ghcr.io/kubesecurebox/pentest-runner:latest` (ARM64 sur Pi)
+2. Image `ghcr.io/alexismetton/pentest-runner:latest` (build auto via GitHub Actions sur push `apps/pentest-lab/`)
 3. Optionnel : clé `DISCORD_WEBHOOK_URL` dans le secret `mcp-hub-secrets`
 4. Admin UI → ajouter domaines/CIDR à l’allowlist
 5. Token client avec scope **`pentest:lab`** (pas `admin`)

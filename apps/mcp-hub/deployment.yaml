@@ -100,7 +100,7 @@ spec:
             - name: PENTEST_NAMESPACE
               value: "pentest-lab"
             - name: PENTEST_RUNNER_IMAGE
-              value: "ghcr.io/kubesecurebox/pentest-runner:latest"
+              value: "ghcr.io/alexismetton/pentest-runner:latest"
             - name: DISCORD_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
