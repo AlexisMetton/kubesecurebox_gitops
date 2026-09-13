@@ -461,11 +461,27 @@ def procurement_top_winners(
             published_to=published_to,
             limit=limit,
         )
-        _audit(principal, "procurement_top_winners", True, (dept or "")[:200], t0)
-        return json.dumps(out, ensure_ascii=False)
+        ok = "error" not in out
+        _audit(
+            principal,
+            "procurement_top_winners",
+            ok,
+            (dept or out.get("error") or "")[:200],
+            t0,
+        )
+        return json.dumps(out, ensure_ascii=False, default=str)
     except Exception as e:
+        import traceback
+
         _audit(principal, "procurement_top_winners", False, str(e)[:200], t0)
-        return json.dumps({"error": str(e)})
+        return json.dumps(
+            {
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "traceback": traceback.format_exc()[-2000:],
+            },
+            ensure_ascii=False,
+        )
 
 
 class McpAuthMiddleware:
@@ -984,11 +1000,31 @@ def v1_procurement_top_winners(
             published_to=published_to,
             limit=limit,
         )
-        _audit(principal, "procurement_top_winners", True, (dept or "")[:200], t0)
+        ok = "error" not in out
+        _audit(
+            principal,
+            "procurement_top_winners",
+            ok,
+            (dept or out.get("error") or "")[:200],
+            t0,
+        )
+        if not ok:
+            raise HTTPException(status_code=500, detail=out)
         return out
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+
         _audit(principal, "procurement_top_winners", False, str(e)[:200], t0)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "traceback": traceback.format_exc()[-2000:],
+            },
+        ) from e
 
 
 @app.get(

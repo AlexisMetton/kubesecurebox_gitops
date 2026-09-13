@@ -255,73 +255,133 @@ def top_winners(
     published_to: str | None = None,
     limit: int = 20,
 ) -> dict:
-    dept = _as_opt_str(dept)
-    published_from = _as_opt_str(published_from)
-    published_to = _as_opt_str(published_to)
-    limit = _as_int(limit, 20)
-    # Exclure artefact buyer==winner ; privilégier attributions / résultats
-    clauses = [
-        "winner_name <> ''",
-        "buyer_name <> ''",
-        "lower(trim(winner_name)) <> lower(trim(buyer_name))",
-        "("
-        "notice_type ILIKE '%ATTRIBUTION%' OR notice_type ILIKE '%RESULTAT%' "
-        "OR winner_siren <> ''"
-        ")",
-        "(amount_ht IS NULL OR (amount_ht >= 100 AND amount_ht <= 500000000))",
-    ]
-    params: list[Any] = []
-    if dept:
-        clauses.append("buyer_dept = %s")
-        params.append(dept)
-    if published_from:
-        clauses.append("published_at >= %s")
-        params.append(published_from)
-    if published_to:
-        clauses.append("published_at <= %s")
-        params.append(published_to)
-    where = " WHERE " + " AND ".join(clauses)
-    sql = f"""
-        SELECT COALESCE(NULLIF(winner_siren, ''), winner_name) AS winner_key,
-               MAX(winner_name) AS winner_name,
-               MAX(winner_siren) AS winner_siren,
-               COUNT(*)::int AS notice_count,
-               SUM(amount_ht) AS amount_ht_sum
-        FROM mcp_procurement_notices
-        {where}
-        GROUP BY COALESCE(NULLIF(winner_siren, ''), winner_name)
-        ORDER BY amount_ht_sum DESC NULLS LAST, notice_count DESC
-        LIMIT %s
-    """
-    params.append(limit)
-    conn = _conn()
+    """Agrège en Python (évite les pièges SQL/driver sur GROUP BY)."""
+    import traceback
+
     try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, params)
-            raw_rows = cur.fetchall() or []
-            rows = []
-            for r in raw_rows:
-                rows.append({
-                    "winner_name": r.get("winner_name") or "",
-                    "winner_siren": r.get("winner_siren") or "",
-                    "notice_count": int(r.get("notice_count") or 0),
-                    "amount_ht_sum": _jsonable(r.get("amount_ht_sum")),
-                })
+        dept = _as_opt_str(dept)
+        published_from = _as_opt_str(published_from)
+        published_to = _as_opt_str(published_to)
+        limit = _as_int(limit, 20)
+
+        clauses = [
+            "winner_name <> ''",
+            "buyer_name <> ''",
+            "lower(btrim(winner_name)) <> lower(btrim(buyer_name))",
+        ]
+        params: list[Any] = []
+        if dept:
+            clauses.append("buyer_dept = %s")
+            params.append(dept)
+        if published_from:
+            clauses.append("published_at >= %s::date")
+            params.append(published_from)
+        if published_to:
+            clauses.append("published_at <= %s::date")
+            params.append(published_to)
+
+        where = " WHERE " + " AND ".join(clauses)
+        sql = f"""
+            SELECT winner_name, winner_siren, notice_type, amount_ht
+            FROM mcp_procurement_notices
+            {where}
+            ORDER BY published_at DESC NULLS LAST
+            LIMIT 5000
+        """
+        conn = _conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                raw = cur.fetchall() or []
+        finally:
+            _put(conn)
+
+        # (winner_key) -> stats
+        agg: dict[str, dict[str, Any]] = {}
+        for row in raw:
+            # row is tuple: winner_name, winner_siren, notice_type, amount_ht
+            if not row or len(row) < 4:
+                continue
+            w_name = (row[0] or "").strip()
+            w_siren = (row[1] or "").strip()
+            ntype = (row[2] or "").upper()
+            amount = row[3]
+
+            if not w_name:
+                continue
+            # garder attributions / résultats, ou SIREN renseigné
+            if (
+                "ATTRIBUTION" not in ntype
+                and "RESULTAT" not in ntype
+                and not w_siren
+            ):
+                continue
+
+            amt: float | None
+            try:
+                if amount is None:
+                    amt = None
+                else:
+                    amt = float(amount)
+                    if amt < 100 or amt > 500_000_000:
+                        amt = None  # montant aberrant : compte l'avis sans somme
+            except (TypeError, ValueError):
+                amt = None
+
+            key = w_siren or w_name.lower()
+            slot = agg.get(key)
+            if slot is None:
+                slot = {
+                    "winner_name": w_name,
+                    "winner_siren": w_siren,
+                    "notice_count": 0,
+                    "amount_ht_sum": 0.0,
+                    "has_amount": False,
+                }
+                agg[key] = slot
+            slot["notice_count"] += 1
+            if amt is not None:
+                slot["amount_ht_sum"] += amt
+                slot["has_amount"] = True
+
+        items = []
+        for slot in agg.values():
+            items.append({
+                "winner_name": slot["winner_name"],
+                "winner_siren": slot["winner_siren"],
+                "notice_count": slot["notice_count"],
+                "amount_ht_sum": (
+                    round(slot["amount_ht_sum"], 2) if slot["has_amount"] else None
+                ),
+            })
+        items.sort(
+            key=lambda x: (
+                x["amount_ht_sum"] is not None,
+                x["amount_ht_sum"] or 0,
+                x["notice_count"],
+            ),
+            reverse=True,
+        )
+        items = items[:limit]
         return _wrap(
-            rows,
+            items,
             filters={
                 "dept": dept,
                 "published_from": published_from,
                 "published_to": published_to,
             },
             note=(
-                "Agrégat sur avis avec attributaire ≠ acheteur "
-                "(ATTRIBUTION/RESULTAT ou SIREN attributaire). "
-                "Montants absurdes exclus."
+                "Agrégat attributaire ≠ acheteur ; "
+                "avis ATTRIBUTION/RESULTAT (ou SIREN) ; montants absurdes exclus de la somme."
             ),
         )
-    finally:
-        _put(conn)
+    except Exception as e:
+        return {
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()[-2000:],
+            "disclaimer": DISCLAIMER,
+        }
 
 
 def stats() -> dict:
