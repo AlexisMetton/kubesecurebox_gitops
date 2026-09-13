@@ -8,7 +8,9 @@ from contextvars import ContextVar
 from pathlib import Path
 
 import db
+import discord_notify
 import oauth_bridge
+import pentest_runner
 import rag_client
 import skills as skills_mod
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
@@ -78,7 +80,8 @@ mcp = FastMCP(
         "Utilise rag_search pour récupérer des extraits du vault Obsidian/GDrive, "
         "rag_ask pour une réponse déjà synthétisée, "
         "skills_list/skills_get pour les procédures partagées, "
-        "activity_recent pour voir l'historique d'usage partagé."
+        "activity_recent pour l'historique, "
+        "pentest_* / scan_* pour les scans lab autorisés (allowlist)."
     ),
 )
 
@@ -203,13 +206,138 @@ def activity_recent(limit: int = 20) -> str:
     if not _has_scope(principal, "activity:read"):
         return json.dumps({"error": "scope activity:read requis"})
     try:
-        # admin voit tout ; sinon filtrer sur son token
         tid = None if "admin" in (principal.get("scopes") or []) else principal.get("id")
         out = db.list_activity(limit=limit, token_id=tid)
         _audit(principal, "activity_recent", True, f"limit={limit}", t0)
         return json.dumps(out, ensure_ascii=False)
     except Exception as e:
         _audit(principal, "activity_recent", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def pentest_tools_list() -> str:
+    """Liste les scanners lab disponibles (nmap, nikto, …)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "pentest:lab"):
+        return json.dumps({"error": "scope pentest:lab requis"})
+    out = pentest_runner.list_tools()
+    _audit(principal, "pentest_tools_list", True, f"{len(out)} tools", t0)
+    return json.dumps(out, ensure_ascii=False)
+
+
+@mcp.tool()
+def pentest_allowlist_list() -> str:
+    """Liste les domaines/IP/CIDR autorisés pour les scans lab."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "pentest:lab"):
+        return json.dumps({"error": "scope pentest:lab requis"})
+    out = db.list_allowlist()
+    _audit(principal, "pentest_allowlist_list", True, f"{len(out)} entries", t0)
+    return json.dumps(out, ensure_ascii=False)
+
+
+@mcp.tool()
+def scan_start(tool: str, target: str) -> str:
+    """Lance un scan lab (Job éphémère + VPN). Cible doit être allowlistée."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "pentest:lab"):
+        return json.dumps({"error": "scope pentest:lab requis"})
+    try:
+        job = pentest_runner.start_scan(
+            token_id=principal.get("id") if principal else None,
+            token_name=(principal or {}).get("name") or "",
+            tool=tool,
+            target=target,
+        )
+        discord_notify.notify_scan(
+            token_name=(principal or {}).get("name") or "",
+            tool=tool,
+            target=target,
+            job_id=job.get("id"),
+            ok=True,
+            detail="scan démarré",
+        )
+        _audit(principal, "scan_start", True, f"{tool}:{target}", t0)
+        return json.dumps(job, ensure_ascii=False)
+    except PermissionError as e:
+        discord_notify.notify_scan(
+            token_name=(principal or {}).get("name") or "",
+            tool=tool,
+            target=target,
+            job_id=None,
+            ok=False,
+            detail=str(e),
+        )
+        _audit(principal, "scan_start", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+    except Exception as e:
+        discord_notify.notify_scan(
+            token_name=(principal or {}).get("name") or "",
+            tool=tool,
+            target=target,
+            job_id=None,
+            ok=False,
+            detail=str(e)[:200],
+        )
+        _audit(principal, "scan_start", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_status(job_id: int) -> str:
+    """Statut d'un scan lab (rafraîchit depuis Kubernetes)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "pentest:lab"):
+        return json.dumps({"error": "scope pentest:lab requis"})
+    try:
+        job = pentest_runner.refresh_job(int(job_id))
+        if not job:
+            return json.dumps({"error": "job inconnu"})
+        _audit(principal, "scan_status", True, f"id={job_id}:{job.get('status')}", t0)
+        return json.dumps(job, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "scan_status", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_report(job_id: int) -> str:
+    """Rapport / logs d'un scan lab."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "pentest:lab"):
+        return json.dumps({"error": "scope pentest:lab requis"})
+    try:
+        job = pentest_runner.refresh_job(int(job_id))
+        if not job:
+            return json.dumps({"error": "job inconnu"})
+        _audit(principal, "scan_report", True, f"id={job_id}", t0)
+        return json.dumps(job, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "scan_report", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_cancel(job_id: int) -> str:
+    """Annule un scan lab en cours."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "pentest:lab"):
+        return json.dumps({"error": "scope pentest:lab requis"})
+    try:
+        job = pentest_runner.cancel_job(int(job_id))
+        if not job:
+            return json.dumps({"error": "job inconnu"})
+        _audit(principal, "scan_cancel", True, f"id={job_id}", t0)
+        return json.dumps(job, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "scan_cancel", False, str(e)[:200], t0)
         return json.dumps({"error": str(e)})
 
 
@@ -477,6 +605,128 @@ def v1_activity(
     out = db.list_activity(limit=limit, token_id=tid)
     _audit(principal, "activity_recent", True, f"limit={limit}", t0)
     return {"events": out}
+
+
+class AllowlistCreate(BaseModel):
+    pattern: str = Field(min_length=1, max_length=253)
+    note: str = Field(default="", max_length=300)
+
+
+class ScanStartBody(BaseModel):
+    tool: str = Field(min_length=1, max_length=40)
+    target: str = Field(min_length=1, max_length=500)
+
+
+@app.get("/admin/pentest/allowlist")
+def admin_list_allowlist(_principal: dict = Depends(require_scope("admin"))):
+    return {"entries": db.list_allowlist()}
+
+
+@app.post("/admin/pentest/allowlist")
+def admin_add_allowlist(
+    body: AllowlistCreate, principal: dict = Depends(require_scope("admin"))
+):
+    t0 = time.time()
+    try:
+        row = db.add_allowlist(body.pattern, body.note)
+        _audit(principal, "admin_allowlist_add", True, body.pattern, t0)
+        return {"entry": row}
+    except Exception as e:
+        _audit(principal, "admin_allowlist_add", False, str(e)[:200], t0)
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+@app.delete("/admin/pentest/allowlist/{entry_id}")
+def admin_del_allowlist(
+    entry_id: int, principal: dict = Depends(require_scope("admin"))
+):
+    t0 = time.time()
+    if not db.delete_allowlist(entry_id):
+        _audit(principal, "admin_allowlist_del", False, f"id={entry_id}", t0)
+        raise HTTPException(status_code=404, detail="entrée introuvable")
+    _audit(principal, "admin_allowlist_del", True, f"id={entry_id}", t0)
+    return {"deleted": True, "id": entry_id}
+
+
+@app.get("/v1/pentest/tools", dependencies=[Depends(require_scope("pentest:lab"))])
+def v1_pentest_tools(principal: dict = Depends(require_token)):
+    t0 = time.time()
+    out = pentest_runner.list_tools()
+    _audit(principal, "pentest_tools_list", True, f"{len(out)} tools", t0)
+    return {"tools": out}
+
+
+@app.get("/v1/pentest/allowlist", dependencies=[Depends(require_scope("pentest:lab"))])
+def v1_pentest_allowlist(principal: dict = Depends(require_token)):
+    t0 = time.time()
+    out = db.list_allowlist()
+    _audit(principal, "pentest_allowlist_list", True, f"{len(out)} entries", t0)
+    return {"entries": out}
+
+
+@app.post("/v1/pentest/scans", dependencies=[Depends(require_scope("pentest:lab"))])
+def v1_scan_start(body: ScanStartBody, principal: dict = Depends(require_token)):
+    t0 = time.time()
+    try:
+        job = pentest_runner.start_scan(
+            token_id=principal["id"],
+            token_name=principal["name"],
+            tool=body.tool,
+            target=body.target,
+        )
+        discord_notify.notify_scan(
+            token_name=principal["name"],
+            tool=body.tool,
+            target=body.target,
+            job_id=job.get("id"),
+            ok=True,
+        )
+        _audit(principal, "scan_start", True, f"{body.tool}:{body.target}", t0)
+        return {"job": job}
+    except PermissionError as e:
+        discord_notify.notify_scan(
+            token_name=principal["name"],
+            tool=body.tool,
+            target=body.target,
+            job_id=None,
+            ok=False,
+            detail=str(e),
+        )
+        _audit(principal, "scan_start", False, str(e)[:200], t0)
+        raise HTTPException(status_code=403, detail=str(e)) from e
+    except Exception as e:
+        discord_notify.notify_scan(
+            token_name=principal["name"],
+            tool=body.tool,
+            target=body.target,
+            job_id=None,
+            ok=False,
+            detail=str(e)[:200],
+        )
+        _audit(principal, "scan_start", False, str(e)[:200], t0)
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.get("/v1/pentest/scans/{job_id}", dependencies=[Depends(require_scope("pentest:lab"))])
+def v1_scan_status(job_id: int, principal: dict = Depends(require_token)):
+    t0 = time.time()
+    job = pentest_runner.refresh_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job inconnu")
+    _audit(principal, "scan_status", True, f"id={job_id}", t0)
+    return {"job": job}
+
+
+@app.delete(
+    "/v1/pentest/scans/{job_id}", dependencies=[Depends(require_scope("pentest:lab"))]
+)
+def v1_scan_cancel(job_id: int, principal: dict = Depends(require_token)):
+    t0 = time.time()
+    job = pentest_runner.cancel_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job inconnu")
+    _audit(principal, "scan_cancel", True, f"id={job_id}", t0)
+    return {"job": job}
 
 
 app.mount("/mcp", mcp_asgi)

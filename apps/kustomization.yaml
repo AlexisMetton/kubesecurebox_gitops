@@ -16,4 +16,5 @@ resources:
   - stock-analyzer
   - personal-rag
   - mcp-hub
+  - pentest-lab
   # - openclaw  # Désactivé — assistant Discord IA ; décommenter pour redéployer

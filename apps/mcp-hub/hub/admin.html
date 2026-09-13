@@ -160,6 +160,7 @@
         <label><input type="checkbox" value="rag:read" checked /> rag:read</label>
         <label><input type="checkbox" value="skills:read" checked /> skills:read</label>
         <label><input type="checkbox" value="activity:read" checked /> activity:read</label>
+        <label><input type="checkbox" value="pentest:lab" /> pentest:lab</label>
         <label><input type="checkbox" value="admin" /> admin</label>
       </div>
       <button class="primary" id="btn-create">Créer token</button>
@@ -170,6 +171,33 @@
             <tr><th>ID</th><th>Nom</th><th>Scopes</th><th>Dernier usage</th><th></th></tr>
           </thead>
           <tbody id="tokens-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Allowlist pentest</h2>
+      <p class="status">Domaines / IP / CIDR autorisés pour les scans lab (admin uniquement).</p>
+      <div class="row" style="margin-top:0.75rem">
+        <div>
+          <label for="al-pattern">Pattern</label>
+          <input id="al-pattern" type="text" placeholder="*.kubesecurebox.com ou 10.0.0.0/24" />
+        </div>
+        <div>
+          <label for="al-note">Note</label>
+          <input id="al-note" type="text" placeholder="lab perso" />
+        </div>
+        <div style="flex:0">
+          <label>&nbsp;</label>
+          <button class="primary" id="btn-al-add" type="button">Ajouter</button>
+        </div>
+      </div>
+      <div style="margin-top:1rem; overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Pattern</th><th>Note</th><th></th></tr>
+          </thead>
+          <tbody id="allowlist-body"></tbody>
         </table>
       </div>
     </section>
@@ -225,21 +253,46 @@
 
     async function loadAll() {
       try {
-        const [tok, skills, act] = await Promise.all([
+        const [tok, skills, act, al] = await Promise.all([
           api("/admin/tokens"),
           api("/v1/skills"),
           api("/v1/activity?limit=40"),
+          api("/admin/pentest/allowlist"),
         ]);
         setStatus(true, "Connecté — scope admin OK");
         renderTokens(tok.tokens || []);
         renderSkills(skills.skills || []);
         renderActivity(act.events || []);
+        renderAllowlist(al.entries || []);
       } catch (e) {
         setStatus(false, "Erreur: " + e.message);
       }
     }
 
-    const ALL_SCOPES = ["rag:read", "skills:read", "activity:read", "admin"];
+    function renderAllowlist(rows) {
+      const tb = $("allowlist-body");
+      tb.innerHTML = "";
+      for (const r of rows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono">${r.id}</td>
+          <td class="mono">${r.pattern}</td>
+          <td>${r.note || ""}</td>
+          <td><button class="danger" data-al-del="${r.id}">Suppr.</button></td>`;
+        tb.appendChild(tr);
+      }
+      tb.querySelectorAll("[data-al-del]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Supprimer cette entrée ?")) return;
+          try {
+            await api("/admin/pentest/allowlist/" + btn.dataset.alDel, { method: "DELETE" });
+            await loadAll();
+          } catch (e) { alert(e.message); }
+        });
+      });
+    }
+
+    const ALL_SCOPES = ["rag:read", "skills:read", "activity:read", "pentest:lab", "admin"];
 
     function scopesBadges(scopes) {
       return (scopes || []).map(s => `<span class="badge">${s}</span>`).join("");
@@ -361,6 +414,19 @@
       } catch (e) { alert(e.message); }
     });
     $("btn-refresh-activity").addEventListener("click", loadAll);
+    $("btn-al-add").addEventListener("click", async () => {
+      const pattern = $("al-pattern").value.trim();
+      if (!pattern) return alert("Pattern requis");
+      try {
+        await api("/admin/pentest/allowlist", {
+          method: "POST",
+          body: JSON.stringify({ pattern, note: $("al-note").value.trim() }),
+        });
+        $("al-pattern").value = "";
+        $("al-note").value = "";
+        await loadAll();
+      } catch (e) { alert(e.message); }
+    });
 
     if (token()) {
       $("token").value = token();

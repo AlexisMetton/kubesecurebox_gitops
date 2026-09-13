@@ -16,6 +16,7 @@ spec:
       labels:
         app: mcp-hub
     spec:
+      serviceAccountName: mcp-hub
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoringDuringExecution:
@@ -96,6 +97,16 @@ spec:
               value: "https://mcp.kubesecurebox.com"
             - name: SKILLS_DIR
               value: "/skills"
+            - name: PENTEST_NAMESPACE
+              value: "pentest-lab"
+            - name: PENTEST_RUNNER_IMAGE
+              value: "ghcr.io/kubesecurebox/pentest-runner:latest"
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mcp-hub-secrets
+                  key: DISCORD_WEBHOOK_URL
+                  optional: true
           volumeMounts:
             - name: code
               mountPath: /code

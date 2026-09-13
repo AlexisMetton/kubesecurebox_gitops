@@ -59,7 +59,8 @@ mcp = MCPServer(
     "kubesecurebox",
     instructions=(
         "Hub KubeSecureBox. Utilise rag_search pour les notes, "
-        "rag_ask pour une réponse synthétisée, skills_* pour les procédures."
+        "rag_ask pour une réponse synthétisée, skills_* pour les procédures, "
+        "pentest_* / scan_* pour les scans lab (allowlist)."
     ),
 )
 
@@ -143,6 +144,66 @@ def activity_recent(limit: int = 20) -> str:
     """Historique récent des appels tools (journal partagé)."""
     try:
         return _get(f"/v1/activity?limit={int(limit)}")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def pentest_tools_list() -> str:
+    """Liste les scanners lab disponibles."""
+    try:
+        return _get("/v1/pentest/tools")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def pentest_allowlist_list() -> str:
+    """Liste les cibles autorisées (allowlist)."""
+    try:
+        return _get("/v1/pentest/allowlist")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_start(tool: str, target: str) -> str:
+    """Lance un scan lab (Job + VPN). Cible allowlistée requise."""
+    try:
+        return _post("/v1/pentest/scans", {"tool": tool, "target": target})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_status(job_id: int) -> str:
+    """Statut d'un scan lab."""
+    try:
+        return _get(f"/v1/pentest/scans/{int(job_id)}")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_report(job_id: int) -> str:
+    """Rapport / logs d'un scan lab."""
+    try:
+        return _get(f"/v1/pentest/scans/{int(job_id)}")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def scan_cancel(job_id: int) -> str:
+    """Annule un scan lab."""
+    try:
+        r = requests.delete(
+            f"{HUB}/v1/pentest/scans/{int(job_id)}",
+            headers=_headers(),
+            timeout=TIMEOUT,
+        )
+        r.raise_for_status()
+        return json.dumps(r.json(), ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)})
 

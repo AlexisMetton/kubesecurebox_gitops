@@ -9,6 +9,7 @@ namespace: mcp-hub
 
 resources:
   - namespace.yaml
+  - serviceaccount.yaml
   - deployment.yaml
   - service.yaml
   - certificate.yaml
@@ -25,6 +26,8 @@ configMapGenerator:
       - rag_client.py=hub/rag_client.py
       - skills.py=hub/skills.py
       - oauth_bridge.py=hub/oauth_bridge.py
+      - pentest_runner.py=hub/pentest_runner.py
+      - discord_notify.py=hub/discord_notify.py
       - requirements.txt=hub/requirements.txt
       - admin.html=hub/admin.html
   - name: mcp-skills
@@ -32,6 +35,10 @@ configMapGenerator:
       - hello=skills/hello/SKILL.md
       - vault-rag=skills/vault-rag/SKILL.md
       - weekly-review=skills/weekly-review/SKILL.md
+      - pentest-lab=skills/pentest-lab/SKILL.md
+      - web-recon=skills/web-recon/SKILL.md
+      - wordpress-audit=skills/wordpress-audit/SKILL.md
+      - port-recon=skills/port-recon/SKILL.md
 
 labels:
   - pairs:

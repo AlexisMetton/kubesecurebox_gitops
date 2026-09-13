@@ -31,7 +31,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://mcp.kubesecurebox.com/mcp
 
 Claude.ai attend souvent un flux **OAuth** (les en-têtes Bearer seuls sont buggés / incomplets).
 
-1. Admin UI → token dédié `claude-ios` (`rag:read`, `skills:read`, `activity:read`)
+1. Admin UI → token dédié `claude-ios` (`rag:read`, `skills:read`, `activity:read` ; ajouter `pentest:lab` seulement si besoin lab)
 2. claude.ai → Connectors → **Add custom connector**
 3. URL : `https://mcp.kubesecurebox.com/mcp`
 4. Auth : **Se connecter maintenant** (OAuth)
@@ -56,8 +56,35 @@ curl -sS https://mcp.kubesecurebox.com/.well-known/oauth-authorization-server
 https://mcp.kubesecurebox.com/admin
 
 1. Colle un token **admin**
-2. Gère tokens (créer, scopes, révoquer) / skills / journal  
+2. Gère tokens (créer, scopes, révoquer) / skills / journal / **allowlist pentest**  
    — scopes modifiables sans régénérer le secret (`PATCH`)
+
+---
+
+## Pentest lab (`pentest:lab`)
+
+Scans = Jobs éphémères dans le ns `pentest-lab` (VPN Proton dans le pod). Le hub notifie Discord (webhook optionnel) à chaque `scan_start` / refus.
+
+### Prérequis ops
+
+1. Déployer `apps/pentest-lab` (Argo) + secret `proton-openvpn` (voir `apps/pentest-lab/README.md`)
+2. Build/push image `ghcr.io/kubesecurebox/pentest-runner:latest` (ARM64 sur Pi)
+3. Optionnel : clé `DISCORD_WEBHOOK_URL` dans le secret `mcp-hub-secrets`
+4. Admin UI → ajouter domaines/CIDR à l’allowlist
+5. Token client avec scope **`pentest:lab`** (pas `admin`)
+
+### Tools MCP / REST
+
+| Tool / path | Rôle |
+|-------------|------|
+| `pentest_tools_list` / `GET /v1/pentest/tools` | nmap, nikto, wpscan, whatweb, httpx, sslscan |
+| `pentest_allowlist_list` / `GET /v1/pentest/allowlist` | lecture allowlist |
+| `scan_start` / `POST /v1/pentest/scans` | lance un Job |
+| `scan_status` / `scan_report` / `GET …/scans/{id}` | statut + logs |
+| `scan_cancel` / `DELETE …/scans/{id}` | annule |
+| Admin ` /admin/pentest/allowlist` | CRUD allowlist (admin only) |
+
+Skills Git : `pentest-lab`, `web-recon`, `wordpress-audit`, `port-recon`.
 
 ---
 
@@ -92,13 +119,16 @@ Prérequis : `python -m pip install --user mcp requests`
 | `/v1/rag/*` | RAG |
 | `/v1/skills` | skills |
 | `/v1/activity` | journal |
+| `/v1/pentest/*` | lab scans (`pentest:lab`) |
+| `/admin/pentest/allowlist` | allowlist (admin) |
 
 ## Skills Git
 
-Ajouter sous `apps/mcp-hub/skills/<nom>/SKILL.md` puis commit + sync Argo.
+Ajouter sous `apps/mcp-hub/skills/<nom>/SKILL.md` puis lister la clé dans `kustomization.yaml` (ConfigMap `mcp-skills`) + sync Argo.
 
 ## Sécurité (rappel)
 
 - Le hub est **sur Internet** : tokens forts, pas de scope `admin` sur les clients Claude.
+- `pentest:lab` uniquement sur un token dédié ; allowlist obligatoire avant tout scan.
 - Révoque immédiatement un token fuité (admin UI).
 - Access Cloudflare sur `/admin` si tu veux une 2ᵉ barrière pour l’UI.
