@@ -15,6 +15,28 @@ DISCLAIMER = (
 )
 
 
+def _as_opt_str(v: Any) -> str | None:
+    """Normalise un argument MCP/HTTP (évite IndexError sur listes vides)."""
+    if v is None:
+        return None
+    if isinstance(v, (list, tuple)):
+        if not v:
+            return None
+        v = v[0]
+    s = str(v).strip()
+    return s or None
+
+
+def _as_int(v: Any, default: int, lo: int = 1, hi: int = 50) -> int:
+    if isinstance(v, (list, tuple)):
+        v = v[0] if v else default
+    try:
+        n = int(v)
+    except (TypeError, ValueError):
+        n = default
+    return max(lo, min(n, hi))
+
+
 def _conn():
     assert db.pool is not None
     return db.pool.getconn()
@@ -56,18 +78,22 @@ def search(
     published_to: str | None = None,
     limit: int = 20,
 ) -> dict:
-    limit = max(1, min(int(limit), 50))
+    dept = _as_opt_str(dept)
+    q = _as_opt_str(q)
+    published_from = _as_opt_str(published_from)
+    published_to = _as_opt_str(published_to)
+    limit = _as_int(limit, 20)
     clauses: list[str] = []
     params: list[Any] = []
     if dept:
         clauses.append("buyer_dept = %s")
-        params.append(dept.strip())
-    if q and q.strip():
+        params.append(dept)
+    if q:
         clauses.append(
             "(title ILIKE %s OR description ILIKE %s OR buyer_name ILIKE %s "
             "OR winner_name ILIKE %s)"
         )
-        like = f"%{q.strip()}%"
+        like = f"%{q}%"
         params.extend([like, like, like, like])
     if published_from:
         clauses.append("published_at >= %s")
@@ -108,20 +134,23 @@ def by_winner(
     dept: str | None = None,
     limit: int = 30,
 ) -> dict:
-    limit = max(1, min(int(limit), 50))
-    if not (siren and siren.strip()) and not (name and name.strip()):
+    siren = _as_opt_str(siren)
+    name = _as_opt_str(name)
+    dept = _as_opt_str(dept)
+    limit = _as_int(limit, 30)
+    if not siren and not name:
         return {"error": "siren ou name requis", "disclaimer": DISCLAIMER}
     clauses: list[str] = []
     params: list[Any] = []
-    if siren and siren.strip():
+    if siren:
         clauses.append("winner_siren = %s")
         params.append("".join(c for c in siren if c.isdigit())[:9])
-    if name and name.strip():
+    if name:
         clauses.append("winner_name ILIKE %s")
-        params.append(f"%{name.strip()}%")
+        params.append(f"%{name}%")
     if dept:
         clauses.append("buyer_dept = %s")
-        params.append(dept.strip())
+        params.append(dept)
     where = " WHERE " + " AND ".join(clauses)
     sql = f"""
         SELECT id, source, external_id, notice_type, title, published_at,
@@ -150,23 +179,26 @@ def by_buyer(
     dept: str | None = None,
     limit: int = 30,
 ) -> dict:
-    limit = max(1, min(int(limit), 50))
-    if not (siren and siren.strip()) and not (name and name.strip()) and not dept:
+    siren = _as_opt_str(siren)
+    name = _as_opt_str(name)
+    dept = _as_opt_str(dept)
+    limit = _as_int(limit, 30)
+    if not siren and not name and not dept:
         return {
             "error": "siren, name ou dept requis",
             "disclaimer": DISCLAIMER,
         }
     clauses: list[str] = []
     params: list[Any] = []
-    if siren and siren.strip():
+    if siren:
         clauses.append("buyer_siren = %s")
         params.append("".join(c for c in siren if c.isdigit())[:9])
-    if name and name.strip():
+    if name:
         clauses.append("buyer_name ILIKE %s")
-        params.append(f"%{name.strip()}%")
+        params.append(f"%{name}%")
     if dept:
         clauses.append("buyer_dept = %s")
-        params.append(dept.strip())
+        params.append(dept)
     where = " WHERE " + " AND ".join(clauses)
     sql = f"""
         SELECT id, source, external_id, notice_type, title, published_at,
@@ -223,10 +255,14 @@ def top_winners(
     published_to: str | None = None,
     limit: int = 20,
 ) -> dict:
-    limit = max(1, min(int(limit), 50))
+    dept = _as_opt_str(dept)
+    published_from = _as_opt_str(published_from)
+    published_to = _as_opt_str(published_to)
+    limit = _as_int(limit, 20)
     # Exclure artefact buyer==winner ; privilégier attributions / résultats
     clauses = [
         "winner_name <> ''",
+        "buyer_name <> ''",
         "lower(trim(winner_name)) <> lower(trim(buyer_name))",
         "("
         "notice_type ILIKE '%ATTRIBUTION%' OR notice_type ILIKE '%RESULTAT%' "
@@ -237,7 +273,7 @@ def top_winners(
     params: list[Any] = []
     if dept:
         clauses.append("buyer_dept = %s")
-        params.append(dept.strip())
+        params.append(dept)
     if published_from:
         clauses.append("published_at >= %s")
         params.append(published_from)
@@ -262,13 +298,14 @@ def top_winners(
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(sql, params)
+            raw_rows = cur.fetchall() or []
             rows = []
-            for r in cur.fetchall():
+            for r in raw_rows:
                 rows.append({
-                    "winner_name": r["winner_name"],
-                    "winner_siren": r["winner_siren"] or "",
-                    "notice_count": r["notice_count"],
-                    "amount_ht_sum": _jsonable(r["amount_ht_sum"]),
+                    "winner_name": r.get("winner_name") or "",
+                    "winner_siren": r.get("winner_siren") or "",
+                    "notice_count": int(r.get("notice_count") or 0),
+                    "amount_ht_sum": _jsonable(r.get("amount_ht_sum")),
                 })
         return _wrap(
             rows,
