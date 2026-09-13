@@ -224,7 +224,16 @@ def top_winners(
     limit: int = 20,
 ) -> dict:
     limit = max(1, min(int(limit), 50))
-    clauses = ["winner_name <> ''"]
+    # Exclure artefact buyer==winner ; privilégier attributions / résultats
+    clauses = [
+        "winner_name <> ''",
+        "lower(trim(winner_name)) <> lower(trim(buyer_name))",
+        "("
+        "notice_type ILIKE '%ATTRIBUTION%' OR notice_type ILIKE '%RESULTAT%' "
+        "OR winner_siren <> ''"
+        ")",
+        "(amount_ht IS NULL OR (amount_ht >= 100 AND amount_ht <= 500000000))",
+    ]
     params: list[Any] = []
     if dept:
         clauses.append("buyer_dept = %s")
@@ -245,7 +254,7 @@ def top_winners(
         FROM mcp_procurement_notices
         {where}
         GROUP BY COALESCE(NULLIF(winner_siren, ''), winner_name)
-        ORDER BY notice_count DESC, amount_ht_sum DESC NULLS LAST
+        ORDER BY amount_ht_sum DESC NULLS LAST, notice_count DESC
         LIMIT %s
     """
     params.append(limit)
@@ -268,7 +277,11 @@ def top_winners(
                 "published_from": published_from,
                 "published_to": published_to,
             },
-            note="Agrégat sur avis indexés ayant un attributaire renseigné.",
+            note=(
+                "Agrégat sur avis avec attributaire ≠ acheteur "
+                "(ATTRIBUTION/RESULTAT ou SIREN attributaire). "
+                "Montants absurdes exclus."
+            ),
         )
     finally:
         _put(conn)

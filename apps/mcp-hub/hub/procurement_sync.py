@@ -162,33 +162,66 @@ def _extract_amount(donnees: Any, titulaire_raw: Any) -> Decimal | None:
     return None
 
 
-def _extract_winner(rec: dict, donnees: Any) -> tuple[str, str]:
+def _norm_org(name: str) -> str:
+    s = (name or "").lower()
+    s = re.sub(r"[^a-z0-9àâäéèêëïîôùûüç]+", " ", s, flags=re.I)
+    return " ".join(s.split())
+
+
+def _extract_winner(rec: dict, donnees: Any, buyer_name: str = "") -> tuple[str, str]:
+    """N'utilise que titulaire / TITULAIRE / ATTRIBUTAIRE — jamais DENOMINATION générique
+    (sinon on reprend l'IDENTITE acheteur)."""
     titulaire = _parse_json_maybe(rec.get("titulaire"))
     name = ""
     if isinstance(titulaire, str):
         name = titulaire.strip()
     elif titulaire is not None:
         name = _first_str([titulaire])
+
     if not name and donnees is not None:
-        name = _first_str(
-            _walk_find(
-                donnees,
-                {
-                    "TITULAIRE",
-                    "TITULAIRES",
-                    "ATTRIBUTAIRE",
-                    "DENOMINATION_SOCIALE",
-                    "DENOMINATION",
-                },
-            )
-        )
-    siren = _extract_siren(name, json.dumps(titulaire, ensure_ascii=False) if titulaire else "")
-    if not siren and donnees is not None:
-        for v in _walk_find(donnees, {"SIREN", "siren", "ID_SIREN"}):
-            s = _extract_siren(str(v))
-            if s:
-                siren = s
+        # Uniquement sous clés attributaire (pas DENOMINATION globale)
+        for key in ("TITULAIRE", "TITULAIRES", "ATTRIBUTAIRE", "ATTRIBUTAIRES"):
+            for v in _walk_find(donnees, {key}):
+                name = _first_str([v])
+                if name:
+                    break
+            if name:
                 break
+
+    siren = ""
+    if titulaire is not None:
+        siren = _extract_siren(
+            name,
+            json.dumps(titulaire, ensure_ascii=False)
+            if not isinstance(titulaire, str)
+            else titulaire,
+        )
+    if not siren and donnees is not None:
+        for key in ("TITULAIRE", "TITULAIRES", "ATTRIBUTAIRE", "ATTRIBUTAIRES"):
+            for block in _walk_find(donnees, {key}):
+                for v in _walk_find(block if block is not None else {}, {"SIREN", "siren", "ID_SIREN", "SIRET"}):
+                    s = "".join(c for c in str(v) if c.isdigit())
+                    if len(s) >= 9:
+                        siren = s[:9]
+                        break
+                if siren:
+                    break
+            if siren:
+                break
+
+    # Rejet si c'est clairement l'acheteur
+    if name and buyer_name and _norm_org(name) == _norm_org(buyer_name):
+        return "", ""
+    if name and buyer_name and _norm_org(buyer_name) in _norm_org(name) and len(_norm_org(name)) < len(_norm_org(buyer_name)) + 8:
+        # ex. winner = buyer
+        if _norm_org(name) == _norm_org(buyer_name):
+            return "", ""
+
+    nature = (rec.get("nature") or "").upper()
+    # Appels d'offres / avis préalable : pas d'attributaire attendu
+    if nature in {"APPEL_OFFRE", "AVIS_PREALABLE", "INTENTION", "RECTIFICATIF"} and not titulaire:
+        return "", ""
+
     return name[:500], siren
 
 
@@ -213,13 +246,19 @@ def _extract_buyer(rec: dict, donnees: Any) -> tuple[str, str, str]:
             )
             if len(siren) > 9:
                 siren = siren[:9]
-        if not siren:
-            for v in _walk_find(donnees, {"SIREN", "SIRET"}):
-                s = "".join(c for c in str(v) if c.isdigit())
-                if len(s) >= 9:
-                    siren = s[:9]
-                    break
+        # Ne pas balayer tous les SIREN du document (risque attributaire)
     return name[:500], siren, city[:200]
+
+
+def _sanitize_amount(amount: Decimal | None) -> Decimal | None:
+    """Écarte montants absurdes (saisie BOAMP foireuse)."""
+    if amount is None:
+        return None
+    if amount < Decimal("100"):
+        return None
+    if amount > Decimal("500000000"):  # 500 M€
+        return None
+    return amount
 
 
 def _dept_from_rec(rec: dict) -> str:
@@ -274,15 +313,25 @@ def normalize_record(rec: dict) -> dict | None:
         return None
     donnees = _parse_json_maybe(rec.get("donnees"))
     gestion = _parse_json_maybe(rec.get("gestion"))
-    winner_name, winner_siren = _extract_winner(rec, donnees)
     buyer_name, buyer_siren, buyer_city = _extract_buyer(rec, donnees)
+    winner_name, winner_siren = _extract_winner(rec, donnees, buyer_name=buyer_name)
+    if (
+        winner_name
+        and buyer_name
+        and _norm_org(winner_name) == _norm_org(buyer_name)
+    ):
+        winner_name, winner_siren = "", ""
+    if winner_siren and buyer_siren and winner_siren == buyer_siren:
+        winner_name, winner_siren = "", ""
     title = (rec.get("objet") or "").strip()
     if not title and isinstance(donnees, dict):
         title = _first_str(_walk_find(donnees, {"TITRE_MARCHE", "OBJET_COMPLET", "RESUME_OBJET"}))
     description = ""
     if isinstance(donnees, dict):
         description = _first_str(_walk_find(donnees, {"OBJET_COMPLET", "RESUME_OBJET"}))[:4000]
-    amount = _extract_amount(donnees, _parse_json_maybe(rec.get("titulaire")))
+    amount = _sanitize_amount(
+        _extract_amount(donnees, _parse_json_maybe(rec.get("titulaire")))
+    )
     slim_raw = {
         "id": rec.get("id"),
         "idweb": rec.get("idweb"),

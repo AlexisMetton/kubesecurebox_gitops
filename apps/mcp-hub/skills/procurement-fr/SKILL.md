@@ -13,4 +13,5 @@ Pour toute question sur les marchés publics / attributaires / acheteurs :
    - Une entreprise : `procurement_by_winner(siren=…)` ou `name=…`.
    - Une collectivité : `procurement_by_buyer(name=…)` ou `dept=…`.
    - Détail : `procurement_get(notice_id=…)`.
-5. Préférer des réponses courtes : tableau / liste + liens, puis 2–3 phrases de synthèse factuelle.
+5. Si `top_winners` semble lister des collectivités : ce sont des artefacts — ignore et croise avec `procurement_search` / avis ATTRIBUTION. Préférer toujours attributaire ≠ acheteur.
+6. Préférer des réponses courtes : tableau / liste + liens, puis 2–3 phrases de synthèse factuelle.
