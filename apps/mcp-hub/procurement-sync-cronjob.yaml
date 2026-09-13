@@ -1,0 +1,98 @@
+# CronJob — sync BOAMP → mcp_procurement_notices (MVP dept 58)
+# 2× / jour, aligné fraîcheur publication BOAMP
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: procurement-sync
+  namespace: mcp-hub
+  labels:
+    app: procurement-sync
+spec:
+  schedule: "15 6,18 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 7200
+      template:
+        metadata:
+          labels:
+            app: procurement-sync
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: mcp-hub
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoringDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 80
+                  preference:
+                    matchExpressions:
+                      - key: kubesecurebox.io/workload
+                        operator: In
+                        values: ["apps"]
+          initContainers:
+            - name: install-deps
+              image: python:3.12-slim
+              command:
+                - bash
+                - -c
+                - pip install --no-cache-dir -r /code/requirements.txt -t /deps
+              volumeMounts:
+                - name: code
+                  mountPath: /code
+                - name: deps
+                  mountPath: /deps
+          containers:
+            - name: sync
+              image: python:3.12-slim
+              command:
+                - bash
+                - -c
+                - export PYTHONPATH=/deps && cd /code && python procurement_sync.py --dept 58
+              env:
+                - name: PG_HOST
+                  value: "postgres.personal-rag.svc.cluster.local"
+                - name: PG_PORT
+                  value: "5432"
+                - name: PG_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: postgres-db
+                - name: PG_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: postgres-user
+                - name: PG_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: postgres-password
+                - name: PROCUREMENT_DEPT
+                  value: "58"
+              volumeMounts:
+                - name: code
+                  mountPath: /code
+                - name: deps
+                  mountPath: /deps
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "768Mi"
+                  cpu: "500m"
+          volumes:
+            - name: code
+              configMap:
+                name: mcp-hub-code
+            - name: deps
+              emptyDir: {}

@@ -68,6 +68,50 @@ CREATE TABLE IF NOT EXISTS mcp_scan_jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_scan_jobs_created
     ON mcp_scan_jobs (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS mcp_procurement_notices (
+    id              BIGSERIAL PRIMARY KEY,
+    source          TEXT NOT NULL DEFAULT 'boamp',
+    external_id     TEXT NOT NULL,
+    notice_type     TEXT NOT NULL DEFAULT '',
+    title           TEXT NOT NULL DEFAULT '',
+    description     TEXT NOT NULL DEFAULT '',
+    published_at    DATE,
+    buyer_name      TEXT NOT NULL DEFAULT '',
+    buyer_siren     TEXT NOT NULL DEFAULT '',
+    buyer_city      TEXT NOT NULL DEFAULT '',
+    buyer_dept      TEXT NOT NULL DEFAULT '',
+    winner_name     TEXT NOT NULL DEFAULT '',
+    winner_siren    TEXT NOT NULL DEFAULT '',
+    amount_ht       NUMERIC,
+    currency        TEXT NOT NULL DEFAULT 'EUR',
+    source_url      TEXT NOT NULL DEFAULT '',
+    raw_json        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (source, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_proc_dept_pub
+    ON mcp_procurement_notices (buyer_dept, published_at DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_mcp_proc_winner_siren
+    ON mcp_procurement_notices (winner_siren)
+    WHERE winner_siren <> '';
+CREATE INDEX IF NOT EXISTS idx_mcp_proc_buyer_siren
+    ON mcp_procurement_notices (buyer_siren)
+    WHERE buyer_siren <> '';
+CREATE INDEX IF NOT EXISTS idx_mcp_proc_winner_name
+    ON mcp_procurement_notices (winner_name);
+CREATE INDEX IF NOT EXISTS idx_mcp_proc_published
+    ON mcp_procurement_notices (published_at DESC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS mcp_procurement_sync_state (
+    source            TEXT PRIMARY KEY,
+    cursor_token      TEXT NOT NULL DEFAULT '',
+    last_success_at   TIMESTAMPTZ,
+    last_error        TEXT NOT NULL DEFAULT '',
+    status            TEXT NOT NULL DEFAULT 'idle',
+    records_upserted  INT NOT NULL DEFAULT 0,
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 """
 
 ALLOWED_SCOPES = {
@@ -76,6 +120,7 @@ ALLOWED_SCOPES = {
     "skills:read",
     "activity:read",
     "pentest:lab",
+    "public:procurement",
 }
 
 

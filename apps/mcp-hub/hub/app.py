@@ -11,6 +11,7 @@ import db
 import discord_notify
 import oauth_bridge
 import pentest_runner
+import procurement
 import rag_client
 import skills as skills_mod
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
@@ -81,7 +82,8 @@ mcp = FastMCP(
         "rag_ask pour une réponse déjà synthétisée, "
         "skills_list/skills_get pour les procédures partagées, "
         "activity_recent pour l'historique, "
-        "pentest_* / scan_* pour les scans lab autorisés (allowlist)."
+        "pentest_* / scan_* pour les scans lab autorisés (allowlist), "
+        "procurement_* pour les marchés publics FR indexés (BOAMP, faits sourcés)."
     ),
 )
 
@@ -338,6 +340,131 @@ def scan_cancel(job_id: int) -> str:
         return json.dumps(job, ensure_ascii=False)
     except Exception as e:
         _audit(principal, "scan_cancel", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_search(
+    dept: str | None = None,
+    q: str | None = None,
+    published_from: str | None = None,
+    published_to: str | None = None,
+    limit: int = 20,
+) -> str:
+    """Recherche d'avis marchés publics indexés (zone, mots-clés, période)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:procurement"):
+        return json.dumps({"error": "scope public:procurement requis"})
+    try:
+        out = procurement.search(
+            dept=dept,
+            q=q,
+            published_from=published_from,
+            published_to=published_to,
+            limit=limit,
+        )
+        _audit(principal, "procurement_search", True, (q or dept or "")[:200], t0)
+        return json.dumps(out, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "procurement_search", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_by_winner(
+    siren: str | None = None,
+    name: str | None = None,
+    dept: str | None = None,
+    limit: int = 30,
+) -> str:
+    """Marchés publics indexés pour un attributaire (SIREN et/ou nom)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:procurement"):
+        return json.dumps({"error": "scope public:procurement requis"})
+    try:
+        out = procurement.by_winner(siren=siren, name=name, dept=dept, limit=limit)
+        _audit(
+            principal,
+            "procurement_by_winner",
+            True,
+            (siren or name or "")[:200],
+            t0,
+        )
+        return json.dumps(out, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "procurement_by_winner", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_by_buyer(
+    siren: str | None = None,
+    name: str | None = None,
+    dept: str | None = None,
+    limit: int = 30,
+) -> str:
+    """Marchés publics indexés pour un acheteur (collectivité / SIREN / nom)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:procurement"):
+        return json.dumps({"error": "scope public:procurement requis"})
+    try:
+        out = procurement.by_buyer(siren=siren, name=name, dept=dept, limit=limit)
+        _audit(
+            principal,
+            "procurement_by_buyer",
+            True,
+            (siren or name or dept or "")[:200],
+            t0,
+        )
+        return json.dumps(out, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "procurement_by_buyer", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_get(notice_id: int) -> str:
+    """Détail d'un avis indexé (id interne) avec URL source."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:procurement"):
+        return json.dumps({"error": "scope public:procurement requis"})
+    try:
+        out = procurement.get_notice(int(notice_id))
+        ok = "error" not in out
+        _audit(principal, "procurement_get", ok, f"id={notice_id}", t0)
+        return json.dumps(out, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "procurement_get", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_top_winners(
+    dept: str | None = None,
+    published_from: str | None = None,
+    published_to: str | None = None,
+    limit: int = 20,
+) -> str:
+    """Top attributaires (nombre d'avis / montants) sur une zone et période."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:procurement"):
+        return json.dumps({"error": "scope public:procurement requis"})
+    try:
+        out = procurement.top_winners(
+            dept=dept,
+            published_from=published_from,
+            published_to=published_to,
+            limit=limit,
+        )
+        _audit(principal, "procurement_top_winners", True, (dept or "")[:200], t0)
+        return json.dumps(out, ensure_ascii=False)
+    except Exception as e:
+        _audit(principal, "procurement_top_winners", False, str(e)[:200], t0)
         return json.dumps({"error": str(e)})
 
 
@@ -727,6 +854,156 @@ def v1_scan_cancel(job_id: int, principal: dict = Depends(require_token)):
         raise HTTPException(status_code=404, detail="job inconnu")
     _audit(principal, "scan_cancel", True, f"id={job_id}", t0)
     return {"job": job}
+
+
+@app.get(
+    "/v1/procurement/search",
+    dependencies=[Depends(require_scope("public:procurement"))],
+)
+def v1_procurement_search(
+    dept: str | None = None,
+    q: str | None = None,
+    published_from: str | None = None,
+    published_to: str | None = None,
+    limit: int = Query(default=20, ge=1, le=50),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = procurement.search(
+            dept=dept,
+            q=q,
+            published_from=published_from,
+            published_to=published_to,
+            limit=limit,
+        )
+        _audit(principal, "procurement_search", True, (q or dept or "")[:200], t0)
+        return out
+    except Exception as e:
+        _audit(principal, "procurement_search", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/procurement/by-winner",
+    dependencies=[Depends(require_scope("public:procurement"))],
+)
+def v1_procurement_by_winner(
+    siren: str | None = None,
+    name: str | None = None,
+    dept: str | None = None,
+    limit: int = Query(default=30, ge=1, le=50),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = procurement.by_winner(siren=siren, name=name, dept=dept, limit=limit)
+        if out.get("error"):
+            raise HTTPException(status_code=400, detail=out["error"])
+        _audit(
+            principal,
+            "procurement_by_winner",
+            True,
+            (siren or name or "")[:200],
+            t0,
+        )
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "procurement_by_winner", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/procurement/by-buyer",
+    dependencies=[Depends(require_scope("public:procurement"))],
+)
+def v1_procurement_by_buyer(
+    siren: str | None = None,
+    name: str | None = None,
+    dept: str | None = None,
+    limit: int = Query(default=30, ge=1, le=50),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = procurement.by_buyer(siren=siren, name=name, dept=dept, limit=limit)
+        if out.get("error"):
+            raise HTTPException(status_code=400, detail=out["error"])
+        _audit(
+            principal,
+            "procurement_by_buyer",
+            True,
+            (siren or name or dept or "")[:200],
+            t0,
+        )
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "procurement_by_buyer", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/procurement/notices/{notice_id}",
+    dependencies=[Depends(require_scope("public:procurement"))],
+)
+def v1_procurement_get(notice_id: int, principal: dict = Depends(require_token)):
+    t0 = time.time()
+    try:
+        out = procurement.get_notice(notice_id)
+        if out.get("error"):
+            raise HTTPException(status_code=404, detail=out["error"])
+        _audit(principal, "procurement_get", True, f"id={notice_id}", t0)
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "procurement_get", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/procurement/top-winners",
+    dependencies=[Depends(require_scope("public:procurement"))],
+)
+def v1_procurement_top_winners(
+    dept: str | None = None,
+    published_from: str | None = None,
+    published_to: str | None = None,
+    limit: int = Query(default=20, ge=1, le=50),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = procurement.top_winners(
+            dept=dept,
+            published_from=published_from,
+            published_to=published_to,
+            limit=limit,
+        )
+        _audit(principal, "procurement_top_winners", True, (dept or "")[:200], t0)
+        return out
+    except Exception as e:
+        _audit(principal, "procurement_top_winners", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/procurement/stats",
+    dependencies=[Depends(require_scope("public:procurement"))],
+)
+def v1_procurement_stats(principal: dict = Depends(require_token)):
+    t0 = time.time()
+    try:
+        out = procurement.stats()
+        _audit(principal, "procurement_stats", True, "stats", t0)
+        return out
+    except Exception as e:
+        _audit(principal, "procurement_stats", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 app.mount("/mcp", mcp_asgi)

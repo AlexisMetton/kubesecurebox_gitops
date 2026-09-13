@@ -31,7 +31,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://mcp.kubesecurebox.com/mcp
 
 Claude.ai attend souvent un flux **OAuth** (les en-têtes Bearer seuls sont buggés / incomplets).
 
-1. Admin UI → token dédié `claude-ios` (`rag:read`, `skills:read`, `activity:read` ; ajouter `pentest:lab` seulement si besoin lab)
+1. Admin UI → token dédié `claude-ios` (`rag:read`, `skills:read`, `activity:read` ; ajouter `pentest:lab` / `public:procurement` seulement si besoin)
 2. claude.ai → Connectors → **Add custom connector**
 3. URL : `https://mcp.kubesecurebox.com/mcp`
 4. Auth : **Se connecter maintenant** (OAuth)
@@ -88,6 +88,49 @@ Skills Git : `pentest-lab`, `web-recon`, `wordpress-audit`, `port-recon`.
 
 ---
 
+## Marchés publics (`public:procurement`)
+
+Index local BOAMP (API DILA OpenDataSoft) → tables `mcp_procurement_*` (Postgres partagé).
+
+### Prérequis
+
+1. Déployer le hub (ConfigMap code inclut `procurement.py` / `procurement_sync.py`)
+2. CronJob `procurement-sync` (2×/jour, MVP **département 58**)
+3. Token client avec scope **`public:procurement`** (admin UI)
+4. Skill Git : `procurement-fr`
+
+Premier sync manuel (debug) :
+
+```bash
+kubectl -n mcp-hub create job --from=cronjob/procurement-sync procurement-sync-manual
+kubectl -n mcp-hub logs -f job/procurement-sync-manual
+```
+
+### Tools MCP / REST
+
+| Tool / path | Rôle |
+|-------------|------|
+| `procurement_search` / `GET /v1/procurement/search` | zone, mots-clés, période |
+| `procurement_by_winner` / `GET /v1/procurement/by-winner` | attributaire SIREN/nom |
+| `procurement_by_buyer` / `GET /v1/procurement/by-buyer` | acheteur |
+| `procurement_get` / `GET /v1/procurement/notices/{id}` | détail + `source_url` |
+| `procurement_top_winners` / `GET /v1/procurement/top-winners` | top attributaires |
+| `GET /v1/procurement/stats` | volume index + état sync |
+
+### Exemples de prompts
+
+- « Top attributaires dans le 58 depuis 2023 »
+- « Quels marchés pour Nevers Agglomération ? »
+- « Cette entreprise (SIREN …) a gagné quels marchés dans le 58 ? »
+
+### Limites (à rappeler)
+
+- Sous-seuils souvent absents ; pas un détecteur de corruption
+- SIREN / montants parfois manquants selon l’avis BOAMP
+- MVP geo : sync CronJob filtré `dept=58` (élargir via `--all-france` plus tard)
+
+---
+
 ## Claude Desktop (stdio proxy, optionnel)
 
 ```json
@@ -120,6 +163,7 @@ Prérequis : `python -m pip install --user mcp requests`
 | `/v1/skills` | skills |
 | `/v1/activity` | journal |
 | `/v1/pentest/*` | lab scans (`pentest:lab`) |
+| `/v1/procurement/*` | marchés publics BOAMP (`public:procurement`) |
 | `/admin/pentest/allowlist` | allowlist (admin) |
 
 ## Skills Git

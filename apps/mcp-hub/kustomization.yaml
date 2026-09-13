@@ -17,6 +17,7 @@ resources:
   - rbac-ingress-nginx-tls.yaml
   - postgres-credentials-sealed.yaml
   - mcp-hub-secrets-sealed.yaml
+  - procurement-sync-cronjob.yaml
 
 configMapGenerator:
   - name: mcp-hub-code
@@ -28,6 +29,8 @@ configMapGenerator:
       - oauth_bridge.py=hub/oauth_bridge.py
       - pentest_runner.py=hub/pentest_runner.py
       - discord_notify.py=hub/discord_notify.py
+      - procurement.py=hub/procurement.py
+      - procurement_sync.py=hub/procurement_sync.py
       - requirements.txt=hub/requirements.txt
       - admin.html=hub/admin.html
   - name: mcp-skills
@@ -39,6 +42,7 @@ configMapGenerator:
       - web-recon=skills/web-recon/SKILL.md
       - wordpress-audit=skills/wordpress-audit/SKILL.md
       - port-recon=skills/port-recon/SKILL.md
+      - procurement-fr=skills/procurement-fr/SKILL.md
 
 labels:
   - pairs:

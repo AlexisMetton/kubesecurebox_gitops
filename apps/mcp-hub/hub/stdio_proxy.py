@@ -60,7 +60,8 @@ mcp = MCPServer(
     instructions=(
         "Hub KubeSecureBox. Utilise rag_search pour les notes, "
         "rag_ask pour une réponse synthétisée, skills_* pour les procédures, "
-        "pentest_* / scan_* pour les scans lab (allowlist)."
+        "pentest_* / scan_* pour les scans lab (allowlist), "
+        "procurement_* pour les marchés publics FR (BOAMP indexé)."
     ),
 )
 
@@ -204,6 +205,102 @@ def scan_cancel(job_id: int) -> str:
         )
         r.raise_for_status()
         return json.dumps(r.json(), ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+def _qs(**kwargs) -> str:
+    from urllib.parse import urlencode
+
+    pairs = {k: v for k, v in kwargs.items() if v is not None and v != ""}
+    return ("?" + urlencode(pairs)) if pairs else ""
+
+
+@mcp.tool()
+def procurement_search(
+    dept: str | None = None,
+    q: str | None = None,
+    published_from: str | None = None,
+    published_to: str | None = None,
+    limit: int = 20,
+) -> str:
+    """Recherche d'avis marchés publics indexés."""
+    try:
+        return _get(
+            "/v1/procurement/search"
+            + _qs(
+                dept=dept,
+                q=q,
+                published_from=published_from,
+                published_to=published_to,
+                limit=limit,
+            )
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_by_winner(
+    siren: str | None = None,
+    name: str | None = None,
+    dept: str | None = None,
+    limit: int = 30,
+) -> str:
+    """Marchés pour un attributaire (SIREN / nom)."""
+    try:
+        return _get(
+            "/v1/procurement/by-winner"
+            + _qs(siren=siren, name=name, dept=dept, limit=limit)
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_by_buyer(
+    siren: str | None = None,
+    name: str | None = None,
+    dept: str | None = None,
+    limit: int = 30,
+) -> str:
+    """Marchés pour un acheteur (collectivité)."""
+    try:
+        return _get(
+            "/v1/procurement/by-buyer"
+            + _qs(siren=siren, name=name, dept=dept, limit=limit)
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_get(notice_id: int) -> str:
+    """Détail d'un avis indexé avec URL source."""
+    try:
+        return _get(f"/v1/procurement/notices/{int(notice_id)}")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def procurement_top_winners(
+    dept: str | None = None,
+    published_from: str | None = None,
+    published_to: str | None = None,
+    limit: int = 20,
+) -> str:
+    """Top attributaires sur une zone / période."""
+    try:
+        return _get(
+            "/v1/procurement/top-winners"
+            + _qs(
+                dept=dept,
+                published_from=published_from,
+                published_to=published_to,
+                limit=limit,
+            )
+        )
     except Exception as e:
         return json.dumps({"error": str(e)})
 

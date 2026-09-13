@@ -161,6 +161,7 @@
         <label><input type="checkbox" value="skills:read" checked /> skills:read</label>
         <label><input type="checkbox" value="activity:read" checked /> activity:read</label>
         <label><input type="checkbox" value="pentest:lab" /> pentest:lab</label>
+        <label><input type="checkbox" value="public:procurement" /> public:procurement</label>
         <label><input type="checkbox" value="admin" /> admin</label>
       </div>
       <button class="primary" id="btn-create">Créer token</button>
@@ -292,7 +293,7 @@
       });
     }
 
-    const ALL_SCOPES = ["rag:read", "skills:read", "activity:read", "pentest:lab", "admin"];
+    const ALL_SCOPES = ["rag:read", "skills:read", "activity:read", "pentest:lab", "public:procurement", "admin"];
 
     function scopesBadges(scopes) {
       return (scopes || []).map(s => `<span class="badge">${s}</span>`).join("");
