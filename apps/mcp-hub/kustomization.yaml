@@ -31,6 +31,7 @@ configMapGenerator:
       - discord_notify.py=hub/discord_notify.py
       - procurement.py=hub/procurement.py
       - procurement_sync.py=hub/procurement_sync.py
+      - tec_client.py=hub/tec_client.py
       - requirements.txt=hub/requirements.txt
       - admin.html=hub/admin.html
   - name: mcp-skills
@@ -43,6 +44,7 @@ configMapGenerator:
       - wordpress-audit=skills/wordpress-audit/SKILL.md
       - port-recon=skills/port-recon/SKILL.md
       - procurement-fr=skills/procurement-fr/SKILL.md
+      - european-citizen=skills/european-citizen/SKILL.md
 
 labels:
   - pairs:

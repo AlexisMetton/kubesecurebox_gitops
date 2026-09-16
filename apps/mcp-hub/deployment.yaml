@@ -107,6 +107,10 @@ spec:
                   name: mcp-hub-secrets
                   key: DISCORD_WEBHOOK_URL
                   optional: true
+            - name: TEC_API_URL
+              value: "https://api.theeuropeancitizen.eu"
+            - name: TEC_SITE_URL
+              value: "https://theeuropeancitizen.eu"
           volumeMounts:
             - name: code
               mountPath: /code

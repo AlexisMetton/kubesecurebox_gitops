@@ -305,6 +305,72 @@ def procurement_top_winners(
         return json.dumps({"error": str(e)})
 
 
+@mcp.tool()
+def tec_recent_votes(limit: int = 10) -> str:
+    """Derniers votes PE (The European Citizen)."""
+    try:
+        return _get("/v1/tec/recent-votes" + _qs(limit=limit))
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_vote_detail(
+    adopted_text_id: int,
+    country: str | None = "FRA",
+    votes_limit: int = 80,
+) -> str:
+    """Détail d'un vote (adopted_text_id)."""
+    try:
+        return _get(
+            f"/v1/tec/votes/{int(adopted_text_id)}"
+            + _qs(country=country, votes_limit=votes_limit)
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_mep(identifier: str, recent_votes_limit: int = 5) -> str:
+    """Fiche eurodéputé TEC."""
+    try:
+        return _get(
+            f"/v1/tec/meps/{identifier}"
+            + _qs(recent_votes_limit=recent_votes_limit)
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_leaderboard(country: str = "FRA") -> str:
+    """Palmarès TEC (votes / présence)."""
+    try:
+        return _get("/v1/tec/leaderboard" + _qs(country=country))
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_post_context(
+    adopted_text_id: int | None = None,
+    mode: str = "vote",
+    country: str = "FRA",
+) -> str:
+    """Contexte factuel pour rédiger un post X (skill european-citizen)."""
+    try:
+        return _get(
+            "/v1/tec/post-context"
+            + _qs(
+                adopted_text_id=adopted_text_id,
+                mode=mode,
+                country=country,
+            )
+        )
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 if __name__ == "__main__":
     # mcp 2.x : run_stdio_async / run ; v1 : run(transport="stdio")
     if hasattr(mcp, "run_stdio_async"):

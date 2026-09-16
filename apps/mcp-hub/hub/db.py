@@ -121,6 +121,7 @@ ALLOWED_SCOPES = {
     "activity:read",
     "pentest:lab",
     "public:procurement",
+    "public:tec",
 }
 
 

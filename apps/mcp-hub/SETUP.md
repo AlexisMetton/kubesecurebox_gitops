@@ -131,6 +131,36 @@ kubectl -n mcp-hub logs -f job/procurement-sync-manual
 
 ---
 
+## The European Citizen (`public:tec`)
+
+Proxy HTTP vers l’API publique TEC (pas de re-index Postgres).
+
+### Prérequis
+
+1. Déployer le hub (ConfigMap code inclut `tec_client.py`)
+2. Env `TEC_API_URL` / `TEC_SITE_URL` (déjà dans `deployment.yaml`)
+3. Token client avec scope **`public:tec`**
+4. Skill Git : `european-citizen`
+
+### Tools MCP / REST
+
+| Tool / path | Rôle |
+|-------------|------|
+| `tec_recent_votes` / `GET /v1/tec/recent-votes` | derniers votes + URLs |
+| `tec_vote_detail` / `GET /v1/tec/votes/{adopted_text_id}` | détail + nominatif si dispo |
+| `tec_mep` / `GET /v1/tec/meps/{identifier}` | fiche député |
+| `tec_leaderboard` / `GET /v1/tec/leaderboard` | palmarès |
+| `tec_post_context` / `GET /v1/tec/post-context` | paquet pour brouillons X |
+
+Utiliser **`adopted_text_id`** (pas le `vote_id` de liste) pour détail / URLs site.
+
+### Limites
+
+- Détail nominatif parfois vide (« Non voté » partout) → ne pas inventer
+- Pas d’auto-post X : drafts seulement via skill persona
+
+---
+
 ## Claude Desktop (stdio proxy, optionnel)
 
 ```json
@@ -164,6 +194,7 @@ Prérequis : `python -m pip install --user mcp requests`
 | `/v1/activity` | journal |
 | `/v1/pentest/*` | lab scans (`pentest:lab`) |
 | `/v1/procurement/*` | marchés publics BOAMP (`public:procurement`) |
+| `/v1/tec/*` | The European Citizen (`public:tec`) |
 | `/admin/pentest/allowlist` | allowlist (admin) |
 
 ## Skills Git

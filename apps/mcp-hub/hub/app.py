@@ -14,6 +14,7 @@ import pentest_runner
 import procurement
 import rag_client
 import skills as skills_mod
+import tec_client
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastmcp import FastMCP
@@ -83,7 +84,8 @@ mcp = FastMCP(
         "skills_list/skills_get pour les procédures partagées, "
         "activity_recent pour l'historique, "
         "pentest_* / scan_* pour les scans lab autorisés (allowlist), "
-        "procurement_* pour les marchés publics FR indexés (BOAMP, faits sourcés)."
+        "procurement_* pour les marchés publics FR indexés (BOAMP, faits sourcés), "
+        "tec_* pour The European Citizen (votes PE, MEPs, palmarès — faits + liens site)."
     ),
 )
 
@@ -482,6 +484,114 @@ def procurement_top_winners(
             },
             ensure_ascii=False,
         )
+
+
+@mcp.tool()
+def tec_recent_votes(limit: int = 10) -> str:
+    """Derniers votes / textes adoptés The European Citizen (titres citoyens + totaux + URLs)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:tec"):
+        return json.dumps({"error": "scope public:tec requis"})
+    try:
+        out = tec_client.recent_votes(limit=limit)
+        _audit(principal, "tec_recent_votes", True, f"limit={limit}", t0)
+        return json.dumps(out, ensure_ascii=False, default=str)
+    except Exception as e:
+        _audit(principal, "tec_recent_votes", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_vote_detail(
+    adopted_text_id: int,
+    country: str | None = "FRA",
+    votes_limit: int = 80,
+) -> str:
+    """Détail d'un vote PE (totaux, extrait résumé, nominatif si dispo). Utiliser adopted_text_id."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:tec"):
+        return json.dumps({"error": "scope public:tec requis"})
+    try:
+        out = tec_client.vote_detail(
+            int(adopted_text_id),
+            country=country,
+            votes_limit=votes_limit,
+        )
+        ok = "error" not in out
+        _audit(principal, "tec_vote_detail", ok, f"id={adopted_text_id}", t0)
+        return json.dumps(out, ensure_ascii=False, default=str)
+    except Exception as e:
+        _audit(principal, "tec_vote_detail", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_mep(identifier: str, recent_votes_limit: int = 5) -> str:
+    """Fiche eurodéputé TEC (identifiant PE) + derniers votes + URL site."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:tec"):
+        return json.dumps({"error": "scope public:tec requis"})
+    try:
+        out = tec_client.mep_profile(
+            identifier, recent_votes_limit=recent_votes_limit
+        )
+        ok = "error" not in out
+        _audit(principal, "tec_mep", ok, (identifier or "")[:200], t0)
+        return json.dumps(out, ensure_ascii=False, default=str)
+    except Exception as e:
+        _audit(principal, "tec_mep", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_leaderboard(country: str = "FRA") -> str:
+    """Palmarès votes / présence TEC (défaut FRA)."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:tec"):
+        return json.dumps({"error": "scope public:tec requis"})
+    try:
+        out = tec_client.leaderboard(country=country)
+        ok = "error" not in out
+        _audit(principal, "tec_leaderboard", ok, (country or "")[:40], t0)
+        return json.dumps(out, ensure_ascii=False, default=str)
+    except Exception as e:
+        _audit(principal, "tec_leaderboard", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def tec_post_context(
+    adopted_text_id: int | None = None,
+    mode: str = "vote",
+    country: str = "FRA",
+) -> str:
+    """Paquet factuel pour rédiger un post X (persona dans skill european-citizen). Pas d'auto-post."""
+    principal = _current_principal()
+    t0 = time.time()
+    if not _has_scope(principal, "public:tec"):
+        return json.dumps({"error": "scope public:tec requis"})
+    try:
+        out = tec_client.post_context(
+            adopted_text_id=adopted_text_id,
+            mode=mode,
+            country=country,
+        )
+        ok = "error" not in out
+        _audit(
+            principal,
+            "tec_post_context",
+            ok,
+            f"mode={mode}|id={adopted_text_id or ''}"[:200],
+            t0,
+        )
+        return json.dumps(out, ensure_ascii=False, default=str)
+    except Exception as e:
+        _audit(principal, "tec_post_context", False, str(e)[:200], t0)
+        return json.dumps({"error": str(e)})
 
 
 class McpAuthMiddleware:
@@ -1039,6 +1149,129 @@ def v1_procurement_stats(principal: dict = Depends(require_token)):
         return out
     except Exception as e:
         _audit(principal, "procurement_stats", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/tec/recent-votes",
+    dependencies=[Depends(require_scope("public:tec"))],
+)
+def v1_tec_recent_votes(
+    limit: int = Query(default=10, ge=1, le=30),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = tec_client.recent_votes(limit=limit)
+        _audit(principal, "tec_recent_votes", True, f"limit={limit}", t0)
+        return out
+    except Exception as e:
+        _audit(principal, "tec_recent_votes", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/tec/votes/{adopted_text_id}",
+    dependencies=[Depends(require_scope("public:tec"))],
+)
+def v1_tec_vote_detail(
+    adopted_text_id: int,
+    country: str | None = "FRA",
+    votes_limit: int = Query(default=80, ge=1, le=200),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = tec_client.vote_detail(
+            adopted_text_id, country=country, votes_limit=votes_limit
+        )
+        if "error" in out:
+            raise HTTPException(status_code=404, detail=out)
+        _audit(principal, "tec_vote_detail", True, f"id={adopted_text_id}", t0)
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "tec_vote_detail", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/tec/meps/{identifier}",
+    dependencies=[Depends(require_scope("public:tec"))],
+)
+def v1_tec_mep(
+    identifier: str,
+    recent_votes_limit: int = Query(default=5, ge=1, le=20),
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = tec_client.mep_profile(
+            identifier, recent_votes_limit=recent_votes_limit
+        )
+        if "error" in out:
+            raise HTTPException(status_code=404, detail=out)
+        _audit(principal, "tec_mep", True, identifier[:200], t0)
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "tec_mep", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/tec/leaderboard",
+    dependencies=[Depends(require_scope("public:tec"))],
+)
+def v1_tec_leaderboard(
+    country: str = "FRA",
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = tec_client.leaderboard(country=country)
+        if "error" in out:
+            raise HTTPException(status_code=500, detail=out)
+        _audit(principal, "tec_leaderboard", True, country[:40], t0)
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "tec_leaderboard", False, str(e)[:200], t0)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get(
+    "/v1/tec/post-context",
+    dependencies=[Depends(require_scope("public:tec"))],
+)
+def v1_tec_post_context(
+    adopted_text_id: int | None = None,
+    mode: str = "vote",
+    country: str = "FRA",
+    principal: dict = Depends(require_token),
+):
+    t0 = time.time()
+    try:
+        out = tec_client.post_context(
+            adopted_text_id=adopted_text_id, mode=mode, country=country
+        )
+        if "error" in out:
+            raise HTTPException(status_code=404, detail=out)
+        _audit(
+            principal,
+            "tec_post_context",
+            True,
+            f"mode={mode}|id={adopted_text_id or ''}"[:200],
+            t0,
+        )
+        return out
+    except HTTPException:
+        raise
+    except Exception as e:
+        _audit(principal, "tec_post_context", False, str(e)[:200], t0)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
