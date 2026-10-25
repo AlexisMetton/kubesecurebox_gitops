@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: portfolio
-          image: ametton/portfolio-alexismetton:sha-fe310b6
+          image: ametton/portfolio-alexismetton:sha-d7c7556
           imagePullPolicy: Always
           ports:
             - containerPort: 80
