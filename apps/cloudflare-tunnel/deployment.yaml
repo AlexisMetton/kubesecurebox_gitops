@@ -24,7 +24,7 @@ spec:
         kubernetes.io/hostname: pi-worker-02
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:2024.12.2
+          image: cloudflare/cloudflared:2026.10.7
           args:
             - tunnel
             - --no-autoupdate
